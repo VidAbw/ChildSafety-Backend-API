@@ -57,11 +57,11 @@ def _classify_children(persons: list[PersonBox]) -> None:
 
 
 class YOLODetector:
-    def __init__(self, model_path: str = "yolov8n.pt"):
+    def __init__(self, model_path: str = "yolov8s.pt"):
         self.model = YOLO(model_path)
 
     def detect(self, frame) -> DetectionResult:
-        results = self.model(frame, verbose=False)[0]
+        results = self.model(frame, verbose=False, imgsz=640)[0]
         persons: list[PersonBox] = []
         hazards: list[HazardBox] = []
 

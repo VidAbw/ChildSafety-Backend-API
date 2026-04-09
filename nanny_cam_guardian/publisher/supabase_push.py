@@ -15,6 +15,7 @@ def push_alert(event: ThreatEvent, user_id: str) -> None:
 
     payload = {
         "user_id": user_id,
+        "source": "nanny_cam",
         "type": event.type,
         "probability": event.probability,
         "timestamp": datetime.now(timezone.utc).isoformat(),

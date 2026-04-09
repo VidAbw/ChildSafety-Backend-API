@@ -14,7 +14,8 @@ class AlertDetails(BaseModel):
 
 class AlertSchema(BaseModel):
     user_id: str
-    type: str           # 'hazard' | 'fall' | 'abuse_suspected'
+    source: str = "nanny_cam"   # default — overridden if called by another component
+    type: str                   # 'hazard' | 'fall' | 'abuse_suspected'
     probability: float
     timestamp: str
     details: AlertDetails | None = None
@@ -24,6 +25,7 @@ class AlertSchema(BaseModel):
 def create_alert(alert: AlertSchema):
     data = {
         "user_id": alert.user_id,
+        "source": alert.source,
         "type": alert.type,
         "probability": alert.probability,
         "timestamp": alert.timestamp,
