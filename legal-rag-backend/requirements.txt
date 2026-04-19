@@ -1,0 +1,8 @@
+fastapi
+uvicorn[standard]
+python-dotenv
+supabase
+faiss-cpu
+sentence-transformers
+pydantic
+langdetect

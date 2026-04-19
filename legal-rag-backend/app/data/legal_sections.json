@@ -1,0 +1,222 @@
+[
+  {
+    "id": 1,
+    "law_name": "Penal Code",
+    "section_number": "308",
+    "abuse_category": "physical abuse",
+    "legal_text_summary": "Causing grievous hurt to a child.",
+    "simple_explanation": "This law applies when someone causes serious physical harm to a child.",
+    "keywords": ["harm", "injury", "beat", "hurt"],
+    "reporting_guidance": "Report to Police 119",
+    "source": "Sri Lankan Penal Code"
+  },
+  {
+    "id": 2,
+    "law_name": "Children and Young Persons Ordinance",
+    "section_number": "10",
+    "abuse_category": "physical abuse",
+    "legal_text_summary": "Protection from cruelty and neglect.",
+    "simple_explanation": "Protects children from being treated cruelly or neglected.",
+    "keywords": ["cruelty", "neglect", "harm"],
+    "reporting_guidance": "Contact NCPA 1929",
+    "source": "Sri Lankan Law"
+  },
+  {
+    "id": 3,
+    "law_name": "Penal Code",
+    "section_number": "365",
+    "abuse_category": "sexual abuse",
+    "legal_text_summary": "Rape and sexual assault.",
+    "simple_explanation": "Covers sexual assault and rape offenses against children.",
+    "keywords": ["rape", "assault", "sexual"],
+    "reporting_guidance": "Report to Police 119 immediately",
+    "source": "Sri Lankan Penal Code"
+  },
+  {
+    "id": 4,
+    "law_name": "Children and Young Persons Ordinance",
+    "section_number": "15",
+    "abuse_category": "sexual abuse",
+    "legal_text_summary": "Protection from indecent assault.",
+    "simple_explanation": "Protects children from indecent acts and assaults.",
+    "keywords": ["indecent", "assault", "touch"],
+    "reporting_guidance": "Contact NCPA 1929",
+    "source": "Sri Lankan Law"
+  },
+  {
+    "id": 5,
+    "law_name": "Children and Young Persons Ordinance",
+    "section_number": "20",
+    "abuse_category": "neglect",
+    "legal_text_summary": "Duty to maintain children.",
+    "simple_explanation": "Parents must provide for their children's basic needs.",
+    "keywords": ["neglect", "maintain", "care"],
+    "reporting_guidance": "Contact NCPA 1929",
+    "source": "Sri Lankan Law"
+  },
+  {
+    "id": 6,
+    "law_name": "Penal Code",
+    "section_number": "320",
+    "abuse_category": "neglect",
+    "legal_text_summary": "Exposing child to danger.",
+    "simple_explanation": "Punishes exposing children to harm or danger.",
+    "keywords": ["expose", "danger", "harm"],
+    "reporting_guidance": "Report to Police 119",
+    "source": "Sri Lankan Penal Code"
+  },
+  {
+    "id": 7,
+    "law_name": "Computer Crimes Act",
+    "section_number": "3",
+    "abuse_category": "digital abuse",
+    "legal_text_summary": "Offenses against computer systems.",
+    "simple_explanation": "Covers cyber harassment and abuse online.",
+    "keywords": ["cyber", "online", "harass"],
+    "reporting_guidance": "Report to Police Cyber Unit",
+    "source": "Sri Lankan Computer Crimes Act"
+  },
+  {
+    "id": 8,
+    "law_name": "Penal Code",
+    "section_number": "341",
+    "abuse_category": "digital abuse",
+    "legal_text_summary": "Wrongful restraint.",
+    "simple_explanation": "Includes online stalking and harassment.",
+    "keywords": ["restraint", "stalk", "harass"],
+    "reporting_guidance": "Contact Police 119",
+    "source": "Sri Lankan Penal Code"
+  },
+  {
+    "id": 9,
+    "law_name": "Children and Young Persons Ordinance",
+    "section_number": "25",
+    "abuse_category": "emotional abuse",
+    "legal_text_summary": "Protection from emotional harm.",
+    "simple_explanation": "Protects children from emotional abuse and trauma.",
+    "keywords": ["emotional", "harm", "trauma"],
+    "reporting_guidance": "Contact NCPA 1929",
+    "source": "Sri Lankan Law"
+  },
+  {
+    "id": 10,
+    "law_name": "Penal Code",
+    "section_number": "296",
+    "abuse_category": "emotional abuse",
+    "legal_text_summary": "Causing fear or annoyance.",
+    "simple_explanation": "Covers threats and causing distress to children.",
+    "keywords": ["fear", "annoyance", "threat"],
+    "reporting_guidance": "Report to Police 119",
+    "source": "Sri Lankan Penal Code"
+  },
+  {
+    "id": 11,
+    "law_name": "Penal Code",
+    "section_number": "309",
+    "abuse_category": "physical abuse",
+    "legal_text_summary": "Attempt to murder.",
+    "simple_explanation": "Applies to attempts to cause death through violence.",
+    "keywords": ["attempt", "murder", "violence"],
+    "reporting_guidance": "Emergency Police 119",
+    "source": "Sri Lankan Penal Code"
+  },
+  {
+    "id": 12,
+    "law_name": "Children and Young Persons Ordinance",
+    "section_number": "12",
+    "abuse_category": "sexual abuse",
+    "legal_text_summary": "Procuration of minor.",
+    "simple_explanation": "Protects against trafficking and exploitation of children.",
+    "keywords": ["procuration", "minor", "exploit"],
+    "reporting_guidance": "Contact NCPA 1929",
+    "source": "Sri Lankan Law"
+  },
+  {
+    "id": 13,
+    "law_name": "Children and Young Persons Ordinance",
+    "section_number": "22",
+    "abuse_category": "neglect",
+    "legal_text_summary": "Employment of children.",
+    "simple_explanation": "Regulates child labor to prevent exploitation.",
+    "keywords": ["employment", "labor", "exploit"],
+    "reporting_guidance": "Contact NCPA 1929",
+    "source": "Sri Lankan Law"
+  },
+  {
+    "id": 14,
+    "law_name": "Computer Crimes Act",
+    "section_number": "5",
+    "abuse_category": "digital abuse",
+    "legal_text_summary": "Child pornography.",
+    "simple_explanation": "Prohibits creation and distribution of child pornography online.",
+    "keywords": ["pornography", "child", "online"],
+    "reporting_guidance": "Report to Police Cyber Unit",
+    "source": "Sri Lankan Computer Crimes Act"
+  },
+  {
+    "id": 15,
+    "law_name": "Penal Code",
+    "section_number": "297",
+    "abuse_category": "emotional abuse",
+    "legal_text_summary": "Defamation.",
+    "simple_explanation": "Covers false statements that harm reputation, including of children.",
+    "keywords": ["defamation", "false", "harm"],
+    "reporting_guidance": "Contact Police 119",
+    "source": "Sri Lankan Penal Code"
+  },
+  {
+    "id": 16,
+    "law_name": "Penal Code",
+    "section_number": "310",
+    "abuse_category": "physical abuse",
+    "legal_text_summary": "Thuggee.",
+    "simple_explanation": "Covers organized violence and harm.",
+    "keywords": ["thuggee", "violence", "organized"],
+    "reporting_guidance": "Emergency Police 119",
+    "source": "Sri Lankan Penal Code"
+  },
+  {
+    "id": 17,
+    "law_name": "Children and Young Persons Ordinance",
+    "section_number": "18",
+    "abuse_category": "sexual abuse",
+    "legal_text_summary": "Abduction.",
+    "simple_explanation": "Protects against kidnapping and abduction of children.",
+    "keywords": ["abduction", "kidnap", "child"],
+    "reporting_guidance": "Contact NCPA 1929",
+    "source": "Sri Lankan Law"
+  },
+  {
+    "id": 18,
+    "law_name": "Children and Young Persons Ordinance",
+    "section_number": "24",
+    "abuse_category": "neglect",
+    "legal_text_summary": "Begging.",
+    "simple_explanation": "Prohibits forcing children to beg.",
+    "keywords": ["begging", "force", "child"],
+    "reporting_guidance": "Contact NCPA 1929",
+    "source": "Sri Lankan Law"
+  },
+  {
+    "id": 19,
+    "law_name": "Computer Crimes Act",
+    "section_number": "7",
+    "abuse_category": "digital abuse",
+    "legal_text_summary": "Cyber bullying.",
+    "simple_explanation": "Addresses online bullying and harassment.",
+    "keywords": ["bullying", "online", "harass"],
+    "reporting_guidance": "Report to Police Cyber Unit",
+    "source": "Sri Lankan Computer Crimes Act"
+  },
+  {
+    "id": 20,
+    "law_name": "Penal Code",
+    "section_number": "298",
+    "abuse_category": "emotional abuse",
+    "legal_text_summary": "Uttering words with intent to wound religious feelings.",
+    "simple_explanation": "Covers harmful speech that causes emotional distress.",
+    "keywords": ["words", "wound", "religious"],
+    "reporting_guidance": "Contact Police 119",
+    "source": "Sri Lankan Penal Code"
+  }
+]
