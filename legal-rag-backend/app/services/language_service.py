@@ -1,4 +1,4 @@
-from langdetect import detect, LangDetectError
+from langdetect import detect
 
 def detect_language(text: str) -> str:
     try:
@@ -9,5 +9,5 @@ def detect_language(text: str) -> str:
             return 'en'  # English
         else:
             return 'en'  # Default to English
-    except LangDetectError:
+    except Exception:
         return 'en'

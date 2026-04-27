@@ -1,8 +1,15 @@
 from fastapi import APIRouter, HTTPException
+from typing import List
+from app.schemas.legal_schema import LegalSection
 from app.schemas.rag_schema import RAGQueryRequest, RAGQueryResponse
 from app.services.language_service import detect_language
 from app.services.classifier_service import classify_abuse
-from app.services.rag_service import retrieve_relevant_laws
+from app.services.rag_service import (
+    retrieve_relevant_laws,
+    import_legal_sections,
+    build_faiss_index,
+    load_legal_sections,
+)
 from app.services.roadmap_service import generate_roadmap
 from app.services.supabase_service import get_reporting_contacts
 import time
@@ -19,8 +26,8 @@ async def rag_query(request: RAGQueryRequest):
     # Classify abuse
     abuse_category = classify_abuse(request.description)
 
-    # Retrieve relevant laws
-    relevant_laws = retrieve_relevant_laws(abuse_category)
+    # Retrieve relevant laws using RAG-style search
+    relevant_laws = retrieve_relevant_laws(request.description, abuse_category)
 
     # Generate roadmap
     decision_roadmap = generate_roadmap(abuse_category)
@@ -48,3 +55,27 @@ async def rag_query(request: RAGQueryRequest):
         reporting_contacts=reporting_contacts,
         privacy_note=privacy_note
     )
+
+@router.post("/api/rag/import")
+async def import_penal_code(sections: List[LegalSection], rebuild_index: bool = True):
+    try:
+        import_legal_sections(sections, rebuild_index=rebuild_index)
+        return {"message": f"Imported {len(sections)} legal sections", "rebuild_index": rebuild_index}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/api/rag/rebuild-index")
+async def rebuild_rag_index():
+    try:
+        build_faiss_index()
+        return {"message": "RAG vector index rebuilt successfully."}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/api/rag/sections")
+async def get_legal_sections():
+    try:
+        sections = load_legal_sections()
+        return {"sections": [section.dict() for section in sections]}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

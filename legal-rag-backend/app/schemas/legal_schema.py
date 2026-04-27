@@ -2,7 +2,7 @@ from pydantic import BaseModel
 from typing import List
 
 class LegalSection(BaseModel):
-    id: int
+    id: str
     law_name: str
     section_number: str
     abuse_category: str
