@@ -29,7 +29,11 @@ class PhoneAudioListener:
         self.threshold = float(os.getenv("AUDIO_STRESS_THRESHOLD", "85.0"))
         self.reconnect_seconds = float(os.getenv("AUDIO_RECONNECT_SECONDS", "3"))
         self.alerts_table = os.getenv("AUDIO_ALERTS_TABLE", "threat_alerts").strip()
-        self.user_id = os.getenv("AUDIO_USER_ID", "").strip()
+        self.user_id = (
+            os.getenv("AUDIO_USER_ID")
+            or os.getenv("USER_ID")
+            or ""
+        ).strip()
 
         self.connected = False
         self.last_value: float | None = None

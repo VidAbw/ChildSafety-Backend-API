@@ -14,7 +14,7 @@ app = FastAPI(title="Child Safety Guardian API")
 
 # Connect the routers
 app.include_router(nanny_router.router, prefix="/api/iot", tags=["Nanny Cam Guardian (MM-ODG)"])
-app.include_router(audio_router.router, prefix="/api/audio", tags=["Audio Guardian"])
+app.include_router(audio_router, prefix="/api/audio", tags=["Audio Guardian"])
 # app.include_router(chat_router.router, prefix="/api/chat", tags=["AI Counselor"])
 # app.include_router(game_router.router, prefix="/api/game", tags=["S-ALS Game"])
 
