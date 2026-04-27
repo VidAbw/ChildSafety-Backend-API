@@ -1,0 +1,695 @@
+[
+  {
+    "id": "pc_286A",
+    "law_name": "Sri Lanka Penal Code",
+    "section_number": "286A",
+    "abuse_category": "child sexual exploitation",
+    "legal_text_summary": "Covers using, employing, persuading, inducing, or coercing a child to appear in obscene or indecent shows, photographs, or films, and distributing, publishing, possessing, or advertising such material.",
+    "simple_explanation": "This section applies when a child is used in obscene or indecent photos, videos, shows, or related publications.",
+    "keywords": [
+      "child",
+      "obscene",
+      "indecent",
+      "photograph",
+      "film",
+      "publication",
+      "sexual exploitation"
+    ],
+    "reporting_guidance": "If child sexual images or recordings are involved, report immediately to police and child protection authorities.",
+    "source": "Sri-Lanka-Penal-Code.pdf"
+  },
+  {
+    "id": "pc_286B",
+    "law_name": "Sri Lanka Penal Code",
+    "section_number": "286B",
+    "abuse_category": "digital child abuse",
+    "legal_text_summary": "A person providing a computer-based service must take necessary steps to ensure that the service is not used for acts relating to the sexual abuse of a child, and if aware of such use must inform the nearest police station.",
+    "simple_explanation": "This section is about online platforms or computer services being used for child sexual abuse. If the provider knows about it, they must report it.",
+    "keywords": [
+      "computer",
+      "internet",
+      "online",
+      "service provider",
+      "sexual abuse",
+      "child",
+      "report"
+    ],
+    "reporting_guidance": "Where computer systems or online platforms are involved, preserve evidence and report to police without delay.",
+    "source": "Sri-Lanka-Penal-Code.pdf"
+  },
+  {
+    "id": "pc_286C",
+    "law_name": "Sri Lanka Penal Code",
+    "section_number": "286C",
+    "abuse_category": "child abuse reporting duty",
+    "legal_text_summary": "Any person who has charge, care, control, or possession of premises and knows the premises are being used for child abuse must inform the officer in charge of the nearest police station.",
+    "simple_explanation": "If someone knows that a house, room, building, or other place is being used to abuse a child, that person must report it.",
+    "keywords": [
+      "premises",
+      "child abuse",
+      "report",
+      "police",
+      "knowledge",
+      "duty"
+    ],
+    "reporting_guidance": "Urgent reporting is required where abuse is happening at a known location.",
+    "source": "Sri-Lanka-Penal-Code.pdf"
+  },
+  {
+    "id": "pc_288",
+    "law_name": "Sri Lanka Penal Code",
+    "section_number": "288",
+    "abuse_category": "child exploitation",
+    "legal_text_summary": "Covers causing or procuring a child to be in a street, premises, or place for begging, receiving alms, or inducing people to give alms.",
+    "simple_explanation": "This section applies when a child is used for begging or for collecting money from the public.",
+    "keywords": [
+      "child",
+      "begging",
+      "alms",
+      "street",
+      "exploitation"
+    ],
+    "reporting_guidance": "Report to police or child protection authorities if a child is being used for begging.",
+    "source": "Sri-Lanka-Penal-Code.pdf"
+  },
+  {
+    "id": "pc_288A",
+    "law_name": "Sri Lanka Penal Code",
+    "section_number": "288A",
+    "abuse_category": "child sexual exploitation",
+    "legal_text_summary": "Covers knowingly hiring, employing, persuading, using, inducing, or coercing a child to procure any person for illicit sexual intercourse.",
+    "simple_explanation": "This section applies when a child is used to arrange or help sexual exploitation.",
+    "keywords": [
+      "child",
+      "procurer",
+      "illicit sexual intercourse",
+      "sexual exploitation"
+    ],
+    "reporting_guidance": "Treat as urgent child sexual exploitation and report immediately.",
+    "source": "Sri-Lanka-Penal-Code.pdf"
+  },
+  {
+    "id": "pc_288B",
+    "law_name": "Sri Lanka Penal Code",
+    "section_number": "288B",
+    "abuse_category": "child exploitation",
+    "legal_text_summary": "Covers knowingly hiring, employing, persuading, using, inducing, or coercing a child to traffic in restricted articles. Trafficking includes selling, giving, procuring, storing, administering, transporting, sending, delivering, or distributing.",
+    "simple_explanation": "This section applies when a child is used to move, sell, store, or distribute restricted items such as dangerous drugs.",
+    "keywords": [
+      "child",
+      "restricted articles",
+      "dangerous drugs",
+      "trafficking",
+      "distribution"
+    ],
+    "reporting_guidance": "Report to police and child protection authorities where a child is being used in drug or restricted-item activity.",
+    "source": "Sri-Lanka-Penal-Code.pdf"
+  },
+  {
+    "id": "pc_308",
+    "law_name": "Sri Lanka Penal Code",
+    "section_number": "308",
+    "abuse_category": "child neglect",
+    "legal_text_summary": "A parent or person having care of a child under twelve who exposes or leaves the child in any place with the intention of wholly abandoning the child commits this offence.",
+    "simple_explanation": "This section applies when a child under twelve is deliberately abandoned.",
+    "keywords": [
+      "child",
+      "abandonment",
+      "exposure",
+      "neglect",
+      "under twelve"
+    ],
+    "reporting_guidance": "If a child has been abandoned or left without care, act immediately for safety and inform police or NCPA.",
+    "source": "Sri-Lanka-Penal-Code.pdf"
+  },
+  {
+    "id": "pc_308A",
+    "law_name": "Sri Lanka Penal Code",
+    "section_number": "308A",
+    "abuse_category": "child physical abuse and neglect",
+    "legal_text_summary": "A person having custody, charge, or care of anyone under eighteen commits this offence by willfully assaulting, ill-treating, neglecting, or abandoning the child in a way likely to cause suffering or injury to health, including mental derangement.",
+    "simple_explanation": "This section applies when a child is physically abused, badly treated, neglected, or abandoned by someone responsible for the child.",
+    "keywords": [
+      "child",
+      "cruelty",
+      "assault",
+      "ill-treatment",
+      "neglect",
+      "abandonment",
+      "mental trauma"
+    ],
+    "reporting_guidance": "This is a core section for child abuse reporting and legal guidance.",
+    "source": "Sri-Lanka-Penal-Code.pdf"
+  },
+  {
+    "id": "pc_309",
+    "law_name": "Sri Lanka Penal Code",
+    "section_number": "309",
+    "abuse_category": "concealment related offence",
+    "legal_text_summary": "Covers intentionally concealing or attempting to conceal the birth of a child by secretly burying or otherwise disposing of the dead body of the child.",
+    "simple_explanation": "This section applies when someone secretly disposes of a dead child’s body to hide the birth.",
+    "keywords": [
+      "concealment",
+      "birth",
+      "dead body",
+      "child",
+      "secret disposal"
+    ],
+    "reporting_guidance": "Treat as a serious matter and report to police immediately.",
+    "source": "Sri-Lanka-Penal-Code.pdf"
+  },
+  {
+    "id": "pc_310",
+    "law_name": "Sri Lanka Penal Code",
+    "section_number": "310",
+    "abuse_category": "physical abuse",
+    "legal_text_summary": "Defines hurt as causing bodily pain, disease, or infirmity to any person.",
+    "simple_explanation": "This section defines what counts as hurt in law.",
+    "keywords": [
+      "hurt",
+      "bodily pain",
+      "disease",
+      "infirmity",
+      "physical harm"
+    ],
+    "reporting_guidance": "Use together with sections on voluntarily causing hurt and grievous hurt.",
+    "source": "Sri-Lanka-Penal-Code.pdf"
+  },
+  {
+    "id": "pc_311",
+    "law_name": "Sri Lanka Penal Code",
+    "section_number": "311",
+    "abuse_category": "physical abuse",
+    "legal_text_summary": "Defines grievous hurt to include serious injuries such as permanent loss or impairment of sight or hearing, loss or impairment of a limb or joint, permanent disfigurement, fractures, life-endangering injuries, and injuries causing severe pain or inability to follow ordinary pursuits for twenty days.",
+    "simple_explanation": "This section defines serious physical injuries that the law treats as grievous hurt.",
+    "keywords": [
+      "grievous hurt",
+      "serious injury",
+      "fracture",
+      "disfigurement",
+      "life endangering"
+    ],
+    "reporting_guidance": "Use when the child has suffered serious or lasting injury.",
+    "source": "Sri-Lanka-Penal-Code.pdf"
+  },
+  {
+    "id": "pc_312",
+    "law_name": "Sri Lanka Penal Code",
+    "section_number": "312",
+    "abuse_category": "physical abuse",
+    "legal_text_summary": "A person voluntarily causes hurt if they act intending or knowing that they are likely to cause hurt, and hurt is caused.",
+    "simple_explanation": "This section explains what it means to intentionally cause hurt.",
+    "keywords": [
+      "voluntarily causing hurt",
+      "intent",
+      "knowledge",
+      "hurt"
+    ],
+    "reporting_guidance": "Use with section 314 for punishment.",
+    "source": "Sri-Lanka-Penal-Code.pdf"
+  },
+  {
+    "id": "pc_313",
+    "law_name": "Sri Lanka Penal Code",
+    "section_number": "313",
+    "abuse_category": "physical abuse",
+    "legal_text_summary": "A person voluntarily causes grievous hurt if they intend or know themselves likely to cause grievous hurt and grievous hurt is caused.",
+    "simple_explanation": "This section explains what it means to intentionally cause serious injury.",
+    "keywords": [
+      "voluntarily causing grievous hurt",
+      "serious injury",
+      "intent"
+    ],
+    "reporting_guidance": "Use with sections 316 and 317 for punishment.",
+    "source": "Sri-Lanka-Penal-Code.pdf"
+  },
+  {
+    "id": "pc_314",
+    "law_name": "Sri Lanka Penal Code",
+    "section_number": "314",
+    "abuse_category": "physical abuse",
+    "legal_text_summary": "Provides punishment for voluntarily causing hurt.",
+    "simple_explanation": "This section gives the punishment for intentionally causing hurt.",
+    "keywords": [
+      "hurt",
+      "punishment",
+      "physical abuse"
+    ],
+    "reporting_guidance": "Relevant where physical harm is present but not grievous hurt.",
+    "source": "Sri-Lanka-Penal-Code.pdf"
+  },
+  {
+    "id": "pc_315",
+    "law_name": "Sri Lanka Penal Code",
+    "section_number": "315",
+    "abuse_category": "aggravated physical abuse",
+    "legal_text_summary": "Applies where hurt is caused using dangerous instruments, fire, heated substances, poison, corrosive substances, explosives, harmful substances, or animals.",
+    "simple_explanation": "This section applies when hurt is caused using a weapon, poison, fire, or another dangerous method.",
+    "keywords": [
+      "dangerous weapon",
+      "poison",
+      "fire",
+      "explosive",
+      "hurt"
+    ],
+    "reporting_guidance": "Use when injury was caused by a dangerous method or instrument.",
+    "source": "Sri-Lanka-Penal-Code.pdf"
+  },
+  {
+    "id": "pc_316",
+    "law_name": "Sri Lanka Penal Code",
+    "section_number": "316",
+    "abuse_category": "serious physical abuse",
+    "legal_text_summary": "Provides punishment for voluntarily causing grievous hurt.",
+    "simple_explanation": "This section gives the punishment for intentionally causing serious injury.",
+    "keywords": [
+      "grievous hurt",
+      "serious injury",
+      "punishment"
+    ],
+    "reporting_guidance": "Relevant where there is severe injury to a child.",
+    "source": "Sri-Lanka-Penal-Code.pdf"
+  },
+  {
+    "id": "pc_317",
+    "law_name": "Sri Lanka Penal Code",
+    "section_number": "317",
+    "abuse_category": "serious aggravated physical abuse",
+    "legal_text_summary": "Applies where grievous hurt is caused by dangerous instruments, fire, heated substances, poison, corrosive substances, explosives, harmful substances, or animals.",
+    "simple_explanation": "This section applies when serious injury is caused using a weapon, poison, fire, or another dangerous method.",
+    "keywords": [
+      "grievous hurt",
+      "dangerous weapon",
+      "poison",
+      "explosive",
+      "serious injury"
+    ],
+    "reporting_guidance": "Highly relevant for severe child abuse with dangerous methods.",
+    "source": "Sri-Lanka-Penal-Code.pdf"
+  },
+  {
+    "id": "pc_318",
+    "law_name": "Sri Lanka Penal Code",
+    "section_number": "318",
+    "abuse_category": "coercive physical abuse",
+    "legal_text_summary": "Applies where hurt is caused to extort property or valuable security, or to constrain the victim or a person interested in the victim to do anything illegal or facilitating an offence.",
+    "simple_explanation": "This section applies when someone is hurt in order to force money, property, or illegal action.",
+    "keywords": [
+      "hurt",
+      "extort",
+      "property",
+      "coercion",
+      "illegal act"
+    ],
+    "reporting_guidance": "Relevant where abuse is used for pressure, threats, or forced compliance.",
+    "source": "Sri-Lanka-Penal-Code.pdf"
+  },
+  {
+    "id": "pc_345",
+    "law_name": "Sri Lanka Penal Code",
+    "section_number": "345",
+    "abuse_category": "sexual abuse and harassment",
+    "legal_text_summary": "Covers sexual harassment by assault or criminal force, or by words or actions causing sexual annoyance or harassment. Includes unwelcome sexual advances by a person in authority.",
+    "simple_explanation": "This section applies when a person sexually harasses another through physical acts, words, or behaviour.",
+    "keywords": [
+      "sexual harassment",
+      "sexual annoyance",
+      "unwelcome advances",
+      "authority"
+    ],
+    "reporting_guidance": "Use for non-rape sexual harassment, including abuse of authority.",
+    "source": "Sri-Lanka-Penal-Code.pdf"
+  },
+  {
+    "id": "pc_350",
+    "law_name": "Sri Lanka Penal Code",
+    "section_number": "350",
+    "abuse_category": "kidnapping and abduction",
+    "legal_text_summary": "Defines kidnapping as either kidnapping from Sri Lanka or kidnapping from lawful guardianship.",
+    "simple_explanation": "This section introduces the two legal forms of kidnapping.",
+    "keywords": [
+      "kidnapping",
+      "lawful guardianship",
+      "Sri Lanka"
+    ],
+    "reporting_guidance": "Use with sections 351 to 358A.",
+    "source": "Sri-Lanka-Penal-Code.pdf"
+  },
+  {
+    "id": "pc_351",
+    "law_name": "Sri Lanka Penal Code",
+    "section_number": "351",
+    "abuse_category": "kidnapping and abduction",
+    "legal_text_summary": "A person kidnaps another from Sri Lanka by conveying them beyond the limits of Sri Lanka without valid consent.",
+    "simple_explanation": "This section applies when a person is taken out of Sri Lanka without proper consent.",
+    "keywords": [
+      "kidnapping from Sri Lanka",
+      "removal",
+      "consent"
+    ],
+    "reporting_guidance": "Relevant where removal or attempted removal from the country is involved.",
+    "source": "Sri-Lanka-Penal-Code.pdf"
+  },
+  {
+    "id": "pc_352",
+    "law_name": "Sri Lanka Penal Code",
+    "section_number": "352",
+    "abuse_category": "kidnapping and abduction",
+    "legal_text_summary": "A person kidnaps from lawful guardianship by taking or enticing a minor under fourteen if male or under sixteen if female, or a person of unsound mind, out of the keeping of the lawful guardian without consent.",
+    "simple_explanation": "This section applies when a child is taken away from the lawful guardian without permission.",
+    "keywords": [
+      "lawful guardianship",
+      "minor",
+      "taken away",
+      "enticed",
+      "guardian"
+    ],
+    "reporting_guidance": "Core section for child kidnapping cases involving guardians.",
+    "source": "Sri-Lanka-Penal-Code.pdf"
+  },
+  {
+    "id": "pc_353",
+    "law_name": "Sri Lanka Penal Code",
+    "section_number": "353",
+    "abuse_category": "kidnapping and abduction",
+    "legal_text_summary": "Defines abduction as compelling a person by force, deceit, abuse of authority, or other means of compulsion to go from any place.",
+    "simple_explanation": "This section explains what counts as abduction.",
+    "keywords": [
+      "abduction",
+      "force",
+      "deceit",
+      "authority",
+      "compulsion"
+    ],
+    "reporting_guidance": "Use where force or deception was used to move a person.",
+    "source": "Sri-Lanka-Penal-Code.pdf"
+  },
+  {
+    "id": "pc_354",
+    "law_name": "Sri Lanka Penal Code",
+    "section_number": "354",
+    "abuse_category": "kidnapping and abduction",
+    "legal_text_summary": "Provides punishment for kidnapping from Sri Lanka or from lawful guardianship.",
+    "simple_explanation": "This section gives the punishment for kidnapping.",
+    "keywords": [
+      "kidnapping",
+      "punishment",
+      "guardianship"
+    ],
+    "reporting_guidance": "Use when kidnapping elements are already identified under sections 351 or 352.",
+    "source": "Sri-Lanka-Penal-Code.pdf"
+  },
+  {
+    "id": "pc_355",
+    "law_name": "Sri Lanka Penal Code",
+    "section_number": "355",
+    "abuse_category": "kidnapping and serious violence",
+    "legal_text_summary": "Applies where kidnapping or abduction is done so that the person may be murdered or placed in danger of being murdered.",
+    "simple_explanation": "This section applies when a person is kidnapped or abducted to be killed or put in danger of being killed.",
+    "keywords": [
+      "kidnapping",
+      "abduction",
+      "murder",
+      "danger"
+    ],
+    "reporting_guidance": "Treat as extreme risk and emergency.",
+    "source": "Sri-Lanka-Penal-Code.pdf"
+  },
+  {
+    "id": "pc_356",
+    "law_name": "Sri Lanka Penal Code",
+    "section_number": "356",
+    "abuse_category": "kidnapping and confinement",
+    "legal_text_summary": "Applies where a person is kidnapped or abducted with intent to cause that person to be secretly and wrongfully confined.",
+    "simple_explanation": "This section applies when someone is taken away to be hidden or illegally confined.",
+    "keywords": [
+      "kidnapping",
+      "abduction",
+      "confinement",
+      "secret",
+      "wrongful"
+    ],
+    "reporting_guidance": "Use where the victim is hidden, locked in, or unlawfully restrained.",
+    "source": "Sri-Lanka-Penal-Code.pdf"
+  },
+  {
+    "id": "pc_357",
+    "law_name": "Sri Lanka Penal Code",
+    "section_number": "357",
+    "abuse_category": "sexual coercion and abduction",
+    "legal_text_summary": "Applies where a woman is kidnapped or abducted to compel marriage against her will or to force or seduce her into illicit intercourse.",
+    "simple_explanation": "This section applies when a woman is taken away to force marriage or sexual exploitation.",
+    "keywords": [
+      "abduction",
+      "forced marriage",
+      "illicit intercourse",
+      "woman"
+    ],
+    "reporting_guidance": "Relevant in child marriage or forced sexual exploitation situations where the victim is female.",
+    "source": "Sri-Lanka-Penal-Code.pdf"
+  },
+  {
+    "id": "pc_358",
+    "law_name": "Sri Lanka Penal Code",
+    "section_number": "358",
+    "abuse_category": "kidnapping and exploitation",
+    "legal_text_summary": "Applies where a person is kidnapped or abducted in order to subject that person to grievous hurt, slavery, unnatural lust, or danger of being so subjected.",
+    "simple_explanation": "This section applies when someone is taken away to be seriously harmed, enslaved, or sexually exploited.",
+    "keywords": [
+      "kidnapping",
+      "abduction",
+      "grievous hurt",
+      "slavery",
+      "sexual exploitation"
+    ],
+    "reporting_guidance": "Highly relevant where abduction is linked with sexual abuse, forced control, or serious violence.",
+    "source": "Sri-Lanka-Penal-Code.pdf"
+  },
+  {
+    "id": "pc_358A",
+    "law_name": "Sri Lanka Penal Code",
+    "section_number": "358A",
+    "abuse_category": "severe exploitation",
+    "legal_text_summary": "Covers subjecting a person to debt bondage, serfdom, forced or compulsory labour, slavery, or recruiting a child for use in armed conflict.",
+    "simple_explanation": "This section applies when a person, especially a child, is forced into labour, slavery, bondage, or armed conflict.",
+    "keywords": [
+      "debt bondage",
+      "serfdom",
+      "forced labour",
+      "slavery",
+      "armed conflict",
+      "child"
+    ],
+    "reporting_guidance": "Treat as severe exploitation and urgent child protection risk.",
+    "source": "Sri-Lanka-Penal-Code.pdf"
+  },
+  {
+    "id": "pc_360A",
+    "law_name": "Sri Lanka Penal Code",
+    "section_number": "360A",
+    "abuse_category": "sexual exploitation",
+    "legal_text_summary": "Covers procuring or attempting to procure any person to become a prostitute, leave Sri Lanka for illicit sexual intercourse, enter or frequent a brothel, or be detained in premises for illicit sexual intercourse or sexual abuse.",
+    "simple_explanation": "This section applies when a person is recruited, moved, or kept for prostitution or sexual abuse.",
+    "keywords": [
+      "procuration",
+      "prostitution",
+      "brothel",
+      "sexual abuse",
+      "illicit sexual intercourse"
+    ],
+    "reporting_guidance": "Relevant for organized sexual exploitation or movement of victims for sexual purposes.",
+    "source": "Sri-Lanka-Penal-Code.pdf"
+  },
+  {
+    "id": "pc_360B",
+    "law_name": "Sri Lanka Penal Code",
+    "section_number": "360B",
+    "abuse_category": "child sexual exploitation",
+    "legal_text_summary": "Covers permitting a child to remain in premises for sexual abuse, acting as a procurer of a child, inducing a person to become a client of a child, using influence or violence to procure a child, or giving money or goods to procure a child for sexual intercourse or sexual abuse.",
+    "simple_explanation": "This section applies when a child is sexually exploited, offered, or arranged for abuse.",
+    "keywords": [
+      "child",
+      "sexual exploitation",
+      "client",
+      "procurer",
+      "violence",
+      "money"
+    ],
+    "reporting_guidance": "Core section for commercial or arranged sexual exploitation of children.",
+    "source": "Sri-Lanka-Penal-Code.pdf"
+  },
+  {
+    "id": "pc_360C",
+    "law_name": "Sri Lanka Penal Code",
+    "section_number": "360C",
+    "abuse_category": "trafficking and severe exploitation",
+    "legal_text_summary": "Covers buying, selling, bartering, recruiting, transporting, transferring, harbouring, or receiving a person through threat, force, fraud, deception, inducement, or vulnerability for forced labour, slavery, servitude, organ removal, prostitution, sexual exploitation, or another offence. For children, consent is irrelevant for the listed exploitative purposes.",
+    "simple_explanation": "This section applies when a person, especially a child, is moved, sold, hidden, or controlled for exploitation.",
+    "keywords": [
+      "trafficking",
+      "child trafficking",
+      "forced labour",
+      "slavery",
+      "servitude",
+      "organ removal",
+      "sexual exploitation"
+    ],
+    "reporting_guidance": "Treat as a major child protection and criminal exploitation offence.",
+    "source": "Sri-Lanka-Penal-Code.pdf"
+  },
+  {
+    "id": "pc_360D",
+    "law_name": "Sri Lanka Penal Code",
+    "section_number": "360D",
+    "abuse_category": "adoption-related abuse",
+    "legal_text_summary": "Covers taking or assisting a child to travel abroad for adoption without lawful consent, obtaining consent of a pregnant woman for money, recruiting women or couples to bear children, falsifying birth records, procuring children from institutions for money or through intimidation, and impersonating the mother.",
+    "simple_explanation": "This section applies when adoption-related processes are abused through money, intimidation, record falsification, or unlawful movement of a child.",
+    "keywords": [
+      "adoption",
+      "illegal adoption",
+      "birth record falsification",
+      "child travel",
+      "intimidation",
+      "impersonation"
+    ],
+    "reporting_guidance": "Relevant where child transfer or adoption appears fraudulent, coercive, or unlawful.",
+    "source": "Sri-Lanka-Penal-Code.pdf"
+  },
+  {
+    "id": "pc_360E",
+    "law_name": "Sri Lanka Penal Code",
+    "section_number": "360E",
+    "abuse_category": "child sexual abuse",
+    "legal_text_summary": "Covers soliciting, by any means, a person under eighteen or a person believed to be under eighteen for the purpose of sexual abuse of a child.",
+    "simple_explanation": "This section applies when someone contacts, approaches, or tries to lure a child for sexual abuse.",
+    "keywords": [
+      "soliciting",
+      "child",
+      "sexual abuse",
+      "luring",
+      "contacting"
+    ],
+    "reporting_guidance": "Relevant for grooming or luring behaviour, including remote or cross-border contact.",
+    "source": "Sri-Lanka-Penal-Code.pdf"
+  },
+  {
+    "id": "pc_363",
+    "law_name": "Sri Lanka Penal Code",
+    "section_number": "363",
+    "abuse_category": "sexual abuse",
+    "legal_text_summary": "Defines rape to include sexual intercourse without consent, with consent obtained through force, intimidation, detention, fear, unsoundness of mind, intoxication, mistaken identity as husband, or where the woman is under sixteen years of age, subject to the marital exception stated in the section.",
+    "simple_explanation": "This section defines when sexual intercourse becomes rape under the law.",
+    "keywords": [
+      "rape",
+      "without consent",
+      "force",
+      "intimidation",
+      "under sixteen",
+      "sexual intercourse"
+    ],
+    "reporting_guidance": "Use for defining rape conditions before applying punishment section 364.",
+    "source": "Sri-Lanka-Penal-Code.pdf"
+  },
+  {
+    "id": "pc_364",
+    "law_name": "Sri Lanka Penal Code",
+    "section_number": "364",
+    "abuse_category": "sexual abuse",
+    "legal_text_summary": "Provides punishment for rape, with higher punishment for aggravated circumstances such as abuse by public officers or institutional staff, rape of pregnant women, women under eighteen, disabled women, and gang rape. A further enhancement exists where the woman is under sixteen and stands in the prohibited degree of relationship in section 364A.",
+    "simple_explanation": "This section gives the punishment for rape and increases it in more serious situations.",
+    "keywords": [
+      "rape punishment",
+      "aggravated rape",
+      "pregnant",
+      "under eighteen",
+      "gang rape",
+      "public officer"
+    ],
+    "reporting_guidance": "Use with section 363 for rape cases.",
+    "source": "Sri-Lanka-Penal-Code.pdf"
+  },
+  {
+    "id": "pc_364A",
+    "law_name": "Sri Lanka Penal Code",
+    "section_number": "364A",
+    "abuse_category": "sexual abuse within prohibited relationship",
+    "legal_text_summary": "Covers sexual intercourse between persons who stand in prohibited family relationships listed in the section, including direct descendants, adoptive relations, siblings, nieces, descendants, and certain step or widow relationships.",
+    "simple_explanation": "This section applies when sexual intercourse happens within close prohibited family relationships.",
+    "keywords": [
+      "incest",
+      "family relationship",
+      "sexual intercourse",
+      "adoption",
+      "prohibited degrees"
+    ],
+    "reporting_guidance": "Relevant when abuse involves a close family relationship.",
+    "source": "Sri-Lanka-Penal-Code.pdf"
+  },
+  {
+    "id": "pc_365",
+    "law_name": "Sri Lanka Penal Code",
+    "section_number": "365",
+    "abuse_category": "sexual abuse",
+    "legal_text_summary": "Covers carnal intercourse against the order of nature with a man, woman, or animal. Where committed by a person over eighteen in respect of a person under sixteen, the punishment is enhanced.",
+    "simple_explanation": "This section applies to acts the law classifies as unnatural offences, with stricter punishment when a child under sixteen is involved.",
+    "keywords": [
+      "unnatural offence",
+      "carnal intercourse",
+      "under sixteen",
+      "sexual abuse"
+    ],
+    "reporting_guidance": "Relevant where sexual abuse of a child falls under this section.",
+    "source": "Sri-Lanka-Penal-Code.pdf"
+  },
+  {
+    "id": "pc_365A",
+    "law_name": "Sri Lanka Penal Code",
+    "section_number": "365A",
+    "abuse_category": "sexual abuse",
+    "legal_text_summary": "Covers committing, participating in, procuring, or attempting to procure any act of gross indecency with another person, in public or private. Where committed by a person over eighteen against a person under sixteen, punishment is enhanced.",
+    "simple_explanation": "This section applies to acts of gross indecency, including child victims.",
+    "keywords": [
+      "gross indecency",
+      "sexual abuse",
+      "under sixteen",
+      "procure"
+    ],
+    "reporting_guidance": "Use where conduct is sexual and serious but not charged as rape or grave sexual abuse.",
+    "source": "Sri-Lanka-Penal-Code.pdf"
+  },
+  {
+    "id": "pc_365B",
+    "law_name": "Sri Lanka Penal Code",
+    "section_number": "365B",
+    "abuse_category": "sexual abuse",
+    "legal_text_summary": "Covers sexual acts done for sexual gratification using genitals, another body part, or an instrument on any orifice or part of another person's body, where the act does not amount to rape but occurs without consent, or where the person is under sixteen, detained, threatened, intimidated, of unsound mind, or intoxicated.",
+    "simple_explanation": "This section applies to serious sexual abuse that may not legally fall under rape but is still a grave offence.",
+    "keywords": [
+      "grave sexual abuse",
+      "instrument",
+      "without consent",
+      "under sixteen",
+      "detention",
+      "intimidation"
+    ],
+    "reporting_guidance": "Core section for severe child sexual abuse cases.",
+    "source": "Sri-Lanka-Penal-Code.pdf"
+  },
+  {
+    "id": "pc_365C",
+    "law_name": "Sri Lanka Penal Code",
+    "section_number": "365C",
+    "abuse_category": "victim privacy protection",
+    "legal_text_summary": "Prohibits printing or publishing the name or identifying matter of a victim in offences under sections 345, 360A, 360B, 363, 364A, 365, 365A, or 365B, subject to limited exceptions such as police investigation or written authorization.",
+    "simple_explanation": "This section protects the identity of victims in serious sexual offences and related offences.",
+    "keywords": [
+      "victim identity",
+      "publication",
+      "privacy",
+      "sexual offences",
+      "child protection"
+    ],
+    "reporting_guidance": "Do not reveal the victim’s identity in system outputs unless legally authorized.",
+    "source": "Sri-Lanka-Penal-Code.pdf"
+  }
+]
