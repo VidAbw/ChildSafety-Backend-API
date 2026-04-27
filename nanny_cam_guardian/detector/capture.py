@@ -21,6 +21,7 @@ load_dotenv()
 
 from nanny_cam_guardian.detector.yolo import YOLODetector
 from nanny_cam_guardian.detector.pose import PoseEstimator
+from nanny_cam_guardian.detector.face import FaceRecognizer
 from nanny_cam_guardian.logic.threat import ThreatRuleEngine, ThreatEvent
 from nanny_cam_guardian.publisher.supabase_push import push_alert
 
@@ -38,7 +39,8 @@ LEVEL_STYLE = {
     0: ((50, 205, 50),  "SAFE"),
     1: ((0, 165, 255),  "HAZARD"),
     2: ((0, 100, 255),  "FALL DETECTED"),
-    3: ((0, 0, 220),    "ABUSE SUSPECTED"),
+    3: ((180, 0, 200),  "UNKNOWN PERSON"),
+    4: ((0, 0, 220),    "ABUSE SUSPECTED"),
 }
 
 # MediaPipe pose connections (pairs of landmark indices to draw as skeleton)
@@ -66,12 +68,24 @@ def _speed_colour(velocity: float, threshold: float = 300.0) -> tuple:
 
 
 def _draw_detections(frame: np.ndarray, detection, keypoints_map: dict,
-                     trackers: dict) -> None:
+                     trackers: dict, face_labels: dict | None = None) -> None:
     h, w = frame.shape[:2]
+    face_labels = face_labels or {}
 
     for idx, person in enumerate(detection.persons):
         colour = COLOUR_CHILD if person.is_child else COLOUR_ADULT
-        label  = "Child" if person.is_child else "Adult"
+        if person.is_child:
+            label = "Child"
+        else:
+            face_name = face_labels.get(idx)
+            if face_name and face_name != "unknown":
+                label = face_name.capitalize()
+                colour = (0, 200, 0)   # green = recognised
+            elif face_name == "unknown":
+                label = "Unknown"
+                colour = (180, 0, 200)  # purple = unknown adult
+            else:
+                label = "Adult"
         cv2.rectangle(frame, (int(person.x1), int(person.y1)),
                       (int(person.x2), int(person.y2)), colour, 2)
         cv2.putText(frame, f"{label} {person.confidence:.0%}",
@@ -143,6 +157,7 @@ def run():
 
     yolo   = YOLODetector()
     pose   = PoseEstimator()
+    face   = FaceRecognizer()
     engine = ThreatRuleEngine()
 
     cap = cv2.VideoCapture(CAMERA_INDEX)
@@ -173,16 +188,20 @@ def run():
                 all_kp, detection.persons, frame_bgr.shape[1], frame_h
             )
 
+            # ── 3. Face recognition (adults only, throttled) ──────────────
+            face_labels = face.identify(frame_bgr, detection.persons)
 
-            # ── 3. Threat classification ──────────────────────────────────
+            # ── 4. Threat classification ──────────────────────────────────
             event = engine.evaluate(detection, keypoints_map, frame_h, timestamp,
-                                    frame_width=frame_bgr.shape[1])
+                                    frame_width=frame_bgr.shape[1],
+                                    face_labels=face_labels)
 
-            # ── 4. Push alert if actionable ───────────────────────────────
+            # ── 5. Push alert if actionable ───────────────────────────────
             push_alert(event, USER_ID)
 
-            # ── 5. Draw preview ───────────────────────────────────────────
-            _draw_detections(frame_bgr, detection, keypoints_map, engine._trackers)
+            # ── 6. Draw preview ───────────────────────────────────────────
+            _draw_detections(frame_bgr, detection, keypoints_map,
+                             engine._trackers, face_labels)
             _draw_status_banner(frame_bgr, event)
             cv2.imshow("Nanny Cam Guardian — MM-ODG", frame_bgr)
 

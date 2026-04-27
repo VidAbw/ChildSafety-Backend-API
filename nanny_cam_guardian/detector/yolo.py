@@ -1,4 +1,5 @@
 # detector/yolo.py
+import os
 from collections import deque
 from dataclasses import dataclass, field
 from ultralytics import YOLO
@@ -7,6 +8,12 @@ HAZARD_CLASSES = {"knife", "scissors", "fork"}
 CHILD_HEIGHT_RATIO = 0.60     # remembered max height < 60% of tallest remembered → child
 IOU_MATCH_THRESHOLD = 0.25    # minimum IoU to link a detection to an existing track
 HEIGHT_MEMORY_FRAMES = 90     # frames to remember each person's max height (~3s at 30fps)
+
+# Optional fine-tuned hazard-specialist model. If present in the project root,
+# it is loaded and used for hazards while stock yolov8s handles persons.
+MODELS_DIR = os.path.join(os.path.dirname(__file__), "..", "models")
+HAZARD_MODEL_PATH = os.path.join(MODELS_DIR, "hazard_yolo.pt")
+HAZARD_CONF_THRESHOLD = 0.35  # confidence floor for the specialist model
 
 
 @dataclass
@@ -121,6 +128,14 @@ class YOLODetector:
         self.model = YOLO(model_path)
         self._tracker = PersonTracker()
 
+        # Optional fine-tuned knife/hazard model — loaded only if present.
+        self.hazard_model = None
+        if os.path.isfile(HAZARD_MODEL_PATH):
+            print(f"[yolo] Loading fine-tuned hazard model: {HAZARD_MODEL_PATH}")
+            self.hazard_model = YOLO(HAZARD_MODEL_PATH)
+        else:
+            print(f"[yolo] No {HAZARD_MODEL_PATH} found — using stock model for hazards.")
+
     def detect(self, frame) -> DetectionResult:
         results = self.model(frame, verbose=False, imgsz=640)[0]
         persons: list[PersonBox] = []
@@ -133,7 +148,18 @@ class YOLODetector:
 
             if label == "person":
                 persons.append(PersonBox(x1, y1, x2, y2, confidence=conf))
-            elif label in HAZARD_CLASSES:
+            elif label in HAZARD_CLASSES and self.hazard_model is None:
+                # Only use stock model for hazards when no specialist exists
+                hazards.append(HazardBox(x1, y1, x2, y2, label=label, confidence=conf))
+
+        # Specialist hazard pass — fine-tuned model is far better at distance
+        if self.hazard_model is not None:
+            hres = self.hazard_model(frame, verbose=False, imgsz=640,
+                                     conf=HAZARD_CONF_THRESHOLD)[0]
+            for box in hres.boxes:
+                label = hres.names[int(box.cls)]
+                x1, y1, x2, y2 = box.xyxy[0].tolist()
+                conf = float(box.conf[0])
                 hazards.append(HazardBox(x1, y1, x2, y2, label=label, confidence=conf))
 
         self._tracker.classify(persons)
