@@ -9,6 +9,8 @@ class RelevantLaw(BaseModel):
     section: str
     title: str
     simple_explanation: str
+    reporting_guidance: str
+    relevance_score: Optional[float] = None
 
 class RAGQueryResponse(BaseModel):
     detected_language: str

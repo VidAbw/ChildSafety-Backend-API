@@ -1,17 +1,88 @@
-from typing import List
+def classify_abuse(text: str) -> str:
+    text = text.lower()
 
-# Simple keyword-based classifier
-ABUSE_CATEGORIES = {
-    "physical abuse": ["hit", "beat", "slap", "punch", "kick", "harm", "injure", "bruise", "wound"],
-    "sexual abuse": ["touch", "molest", "rape", "abuse", "assault", "inappropriate", "naked", "sex"],
-    "neglect": ["neglect", "starve", "hungry", "dirty", "unfed", "uncared", "abandon"],
-    "digital abuse": ["online", "internet", "cyber", "harass", "bully", "threat", "stalk"],
-    "emotional abuse": ["yell", "scare", "threaten", "insult", "humiliate", "ignore", "reject"]
-}
+    neglect_keywords = [
+        "neglect",
+        "abandon",
+        "abandoned",
+        "left alone",
+        "without food",
+        "without care",
+        "without protection",
+        "no food",
+        "no care",
+        "no protection",
+        "not cared for",
+        "not looked after"
+    ]
 
-def classify_abuse(description: str) -> str:
-    description_lower = description.lower()
-    for category, keywords in ABUSE_CATEGORIES.items():
-        if any(keyword in description_lower for keyword in keywords):
-            return category
-    return "general abuse"  # Default
+    physical_keywords = [
+        "beat",
+        "beaten",
+        "hit",
+        "harm",
+        "harmed",
+        "injury",
+        "injured",
+        "physically harmed",
+        "physical abuse",
+        "hurt"
+    ]
+
+    sexual_keywords = [
+    "sexual",
+    "rape",
+    "indecent",
+    "exploit",
+    "exploitation",
+    "sexual abuse",
+    "indecent photos",
+    "obscene",
+    "child photos",
+    "obscene photos",
+    "sexual images",
+    "sexual content",
+    "grooming",
+    "lure",
+    "luring",
+    "solicit",
+    "soliciting"
+    ]
+
+    trafficking_keywords = [
+        "traffic",
+        "trafficking",
+        "moved for exploitation",
+        "transported",
+        "controlled for exploitation",
+        "sold",
+        "forced labour",
+        "slavery"
+    ]
+
+    digital_keywords = [
+        "online",
+        "internet",
+        "computer",
+        "photos",
+        "videos",
+        "platform",
+        "digital abuse"
+    ]
+
+    if any(word in text for word in neglect_keywords):
+        return "neglect"
+
+    if any(word in text for word in physical_keywords):
+        return "physical abuse"
+
+    if any(word in text for word in sexual_keywords):
+        return "sexual abuse"
+
+    if any(word in text for word in trafficking_keywords):
+        return "trafficking"
+
+    if any(word in text for word in digital_keywords):
+        return "digital abuse"
+
+    return "general abuse"
