@@ -128,7 +128,9 @@
     "section_number": "308A",
     "abuse_category": "child physical abuse and neglect",
     "legal_text_summary": "A person having custody, charge, or care of anyone under eighteen commits this offence by willfully assaulting, ill-treating, neglecting, or abandoning the child in a way likely to cause suffering or injury to health, including mental derangement.",
+    "title_si": "ළමයින්ට කෘර ලෙස සැලකීම",
     "simple_explanation": "This section applies when a child is physically abused, badly treated, neglected, or abandoned by someone responsible for the child.",
+    "simple_explanation_si": "දරුවාට වගකිවයුතු පුද්ගලයෙකු විසින් හිංසා කිරීම, අයහපත් ලෙස සැලකීම, නොසලකා හැරීම හෝ අත්හැර දැමීම මෙම වගන්තියට අදාල වේ.",
     "keywords": [
       "child",
       "cruelty",
@@ -139,6 +141,7 @@
       "mental trauma"
     ],
     "reporting_guidance": "This is a core section for child abuse reporting and legal guidance.",
+    "reporting_guidance_si": "මෙය ළමා හිංසාව සම්බන්ධ නීතිමය මාර්ගෝපදේශනය සහ පැමිණිලි කිරීම සඳහා වැදගත් වගන්තියකි.",
     "source": "Sri-Lanka-Penal-Code.pdf"
   },
   {
