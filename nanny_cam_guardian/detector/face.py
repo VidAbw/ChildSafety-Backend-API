@@ -17,7 +17,11 @@ import os
 from pathlib import Path
 
 import numpy as np
-from deepface import DeepFace
+
+try:
+    from deepface import DeepFace
+except ImportError:
+    DeepFace = None
 
 KNOWN_FACES_DIR = Path(__file__).resolve().parent.parent / "known_faces"
 MODEL_NAME = "SFace"          # lightweight, no extra downloads after first run
@@ -36,6 +40,9 @@ class FaceRecognizer:
         self._load_known_faces()
 
     def _load_known_faces(self) -> None:
+        if DeepFace is None:
+            print("[face] deepface not installed; face recognition disabled.")
+            return
         if not KNOWN_FACES_DIR.exists():
             print(f"[face] known_faces folder missing: {KNOWN_FACES_DIR}")
             return
@@ -64,6 +71,8 @@ class FaceRecognizer:
         return 1.0 - float(np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b)))
 
     def _identify_crop(self, crop_bgr: np.ndarray) -> str:
+        if DeepFace is None:
+            return "unknown"
         if not self._known:
             return "unknown"
         try:
