@@ -10,10 +10,15 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# CORS middleware for Expo app
+# CORS middleware for local frontend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # In production, specify your Expo app URL
+    allow_origins=[
+        "http://localhost:8082",
+        "http://127.0.0.1:8082",
+        "http://localhost:8081",
+        "http://127.0.0.1:8081",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

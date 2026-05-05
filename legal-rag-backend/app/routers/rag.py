@@ -29,8 +29,8 @@ async def rag_query(request: RAGQueryRequest):
     # Retrieve relevant laws using RAG-style search
     relevant_laws = retrieve_relevant_laws(request.description, abuse_category, request.language)
 
-    # Generate roadmap
-    decision_roadmap = generate_roadmap(abuse_category)
+    # Generate roadmap in the requested language
+    decision_roadmap = generate_roadmap(abuse_category, request.language)
 
     # Get contacts
     contacts = get_reporting_contacts()
