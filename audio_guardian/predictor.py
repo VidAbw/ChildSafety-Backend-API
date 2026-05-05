@@ -15,7 +15,8 @@ logger = logging.getLogger(__name__)
 # Constants (Must match training script)
 N_MFCC = 40
 MAX_LEN = 150
-MODEL_PATH = Path(r"c:\Users\94771\Desktop\ChildSafety-Backend-API\audio model training\audio_threat_model.pth")
+# Use a relative path so it works on any computer
+MODEL_PATH = Path(__file__).parent.parent / "audio model training" / "audio_threat_model.pth"
 
 class AudioThreatNet(nn.Module):
     def __init__(self):

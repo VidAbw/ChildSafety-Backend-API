@@ -47,7 +47,8 @@ def record_and_send():
             # Send to backend
             try:
                 files = {'file': ('chunk.wav', wav_bytes, 'audio/wav')}
-                response = requests.post(API_URL, files=files)
+                payload = {'device_info': 'Desktop Dev Mic'}
+                response = requests.post(API_URL, files=files, data=payload)
                 if response.status_code == 200:
                     data = response.json()
                     status = data.get("status", "Unknown")

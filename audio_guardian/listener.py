@@ -28,7 +28,7 @@ class PhoneAudioListener:
 
         self.threshold = float(os.getenv("AUDIO_STRESS_THRESHOLD", "85.0"))
         self.reconnect_seconds = float(os.getenv("AUDIO_RECONNECT_SECONDS", "3"))
-        self.alerts_table = os.getenv("AUDIO_ALERTS_TABLE", "threat_alerts").strip()
+        self.alerts_table = os.getenv("AUDIO_ALERTS_TABLE", "audio_threat_alerts").strip()
         self.user_id = (
             os.getenv("AUDIO_USER_ID")
             or os.getenv("USER_ID")
@@ -113,8 +113,9 @@ class PhoneAudioListener:
         self.last_message_at = datetime.now(timezone.utc).isoformat()
 
         if value > self.threshold:
-            logger.warning("High stress detected: %.2f dB", value)
-            self._trigger_supabase_alert(value)
+            threat_level = "high" if value > self.threshold + 15 else "moderate"
+            logger.warning("%s stress detected: %.2f dB", threat_level.capitalize(), value)
+            self._trigger_supabase_alert(intensity_score=value, threat_level=threat_level, device_info="WebSocket Sensor")
         else:
             logger.info("Background audio level: %.2f dB", value)
 
@@ -144,12 +145,13 @@ class PhoneAudioListener:
 
         return None
 
-    def _trigger_supabase_alert(self, intensity_score: float) -> None:
+    def _trigger_supabase_alert(self, intensity_score: float, threat_level: str = "moderate", device_info: str = "unknown") -> None:
         data = {
             "sensor_type": "acoustic",
             "threat_category": "Vocal Aggression / Screaming",
-            "intensity": intensity_score,
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "intensity_score": intensity_score,
+            "threat_level": threat_level,
+            "device_info": device_info,
             "status": "pending_verification",
         }
 

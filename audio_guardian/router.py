@@ -1,6 +1,6 @@
 import os
 from pathlib import Path
-from fastapi import APIRouter, UploadFile, File
+from fastapi import APIRouter, UploadFile, File, Form
 from .listener import phone_audio_listener
 from .predictor import predictor
 
@@ -32,7 +32,10 @@ async def stop_audio_listener() -> dict:
     }
 
 @router.post("/upload-chunk")
-async def upload_audio_chunk(file: UploadFile = File(...)):
+async def upload_audio_chunk(
+    file: UploadFile = File(...),
+    device_info: str = Form("unknown")
+):
     """
     Endpoint for a microphone streamer to upload 3-second audio chunks.
     Runs the 1D-CNN + LSTM model and triggers an alert if it's a Threat.
@@ -52,9 +55,15 @@ async def upload_audio_chunk(file: UploadFile = File(...)):
             status_msg = "Safe (Parent Voice Verified)"
             class_id = 0
         else:
-            status_msg = "Threat Detected"
+            # Moderate if < 85%, High if >= 85%
+            threat_level = "high" if probability >= 0.85 else "moderate"
+            status_msg = f"Threat Detected ({threat_level.capitalize()})"
             # Trigger an alert in Supabase
-            phone_audio_listener._trigger_supabase_alert(probability * 100.0) # Using probability as intensity
+            phone_audio_listener._trigger_supabase_alert(
+                intensity_score=probability * 100.0, 
+                threat_level=threat_level,
+                device_info=device_info
+            )
         
     return {
         "filename": file.filename,

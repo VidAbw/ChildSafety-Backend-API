@@ -13,7 +13,8 @@ from sklearn.model_selection import train_test_split
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 
-BASE_DIR = Path(r"c:\Users\94771\Desktop\ChildSafety-Backend-API\audio model training")
+# Use a dynamic path to the current directory
+BASE_DIR = Path(__file__).parent
 TRAINING_DIR = BASE_DIR / "Training_Data"
 SAFE_DIR = TRAINING_DIR / "Class_0_Safe"
 THREAT_DIR = TRAINING_DIR / "Class_1_Threat"
@@ -23,7 +24,7 @@ MODEL_SAVE_PATH = BASE_DIR / "audio_threat_model.pth"
 MAX_LEN = 150  # Fixed sequence length for MFCC
 N_MFCC = 40
 BATCH_SIZE = 32
-EPOCHS = 10     # Keep it small for prototyping
+EPOCHS = 25     # Increased to allow the model to learn better
 LEARNING_RATE = 0.001
 
 class AudioDataset(Dataset):
@@ -115,12 +116,12 @@ def prepare_data():
     safe_files = list(SAFE_DIR.glob("*.wav"))
     threat_files = list(THREAT_DIR.glob("*.wav"))
     
-    # Optional: Limiting samples to ensure balanced dataset or faster prototyping
-    # np.random.shuffle(safe_files)
-    # np.random.shuffle(threat_files)
-    # min_len = min(len(safe_files), len(threat_files))
-    # safe_files = safe_files[:min_len]
-    # threat_files = threat_files[:min_len]
+    # Ensure balanced dataset to prevent the model from always guessing 'Safe'
+    np.random.shuffle(safe_files)
+    np.random.shuffle(threat_files)
+    min_len = min(len(safe_files), len(threat_files))
+    safe_files = safe_files[:min_len]
+    threat_files = threat_files[:min_len]
 
     files = safe_files + threat_files
     labels = [0] * len(safe_files) + [1] * len(threat_files)
