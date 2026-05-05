@@ -106,22 +106,25 @@
     "source": "Sri-Lanka-Penal-Code.pdf"
   },
   {
-    "id": "pc_308",
-    "law_name": "Sri Lanka Penal Code",
-    "section_number": "308",
-    "abuse_category": "child neglect",
-    "legal_text_summary": "A parent or person having care of a child under twelve who exposes or leaves the child in any place with the intention of wholly abandoning the child commits this offence.",
-    "simple_explanation": "This section applies when a child under twelve is deliberately abandoned.",
-    "keywords": [
-      "child",
-      "abandonment",
-      "exposure",
-      "neglect",
-      "under twelve"
-    ],
-    "reporting_guidance": "If a child has been abandoned or left without care, act immediately for safety and inform police or NCPA.",
-    "source": "Sri-Lanka-Penal-Code.pdf"
-  },
+  "id": "pc_308",
+  "law_name": "Sri Lanka Penal Code",
+  "section_number": "308",
+  "abuse_category": "child neglect",
+  "legal_text_summary": "...",
+  "simple_explanation": "This section applies when a child under twelve is deliberately abandoned.",
+  "title_si": "දරුවා අත්හැර දැමීම",
+  "simple_explanation_si": "වයස අවුරුදු දොළහට අඩු දරුවෙකු හිතාමතා අත්හැර දැමීම හෝ රැකවරණයකින් තොරව තැබීම මෙම වගන්තියට අදාල වේ.",
+  "keywords": [
+    "child",
+    "abandonment",
+    "exposure",
+    "neglect",
+    "under twelve"
+  ],
+  "reporting_guidance": "If a child has been abandoned or left without care, act immediately for safety and inform police or NCPA.",
+  "reporting_guidance_si": "දරුවා අත්හැර දමා ඇති නම් හෝ රැකවරණයක් නොමැති නම්, වහාම ආරක්ෂාව තහවුරු කර පොලිසියට හෝ NCPA වෙත දන්වන්න.",
+  "source": "Sri-Lanka-Penal-Code.pdf"
+},
   {
     "id": "pc_308A",
     "law_name": "Sri Lanka Penal Code",
@@ -168,6 +171,9 @@
     "abuse_category": "physical abuse",
     "legal_text_summary": "Defines hurt as causing bodily pain, disease, or infirmity to any person.",
     "simple_explanation": "This section defines what counts as hurt in law.",
+    "title_si": "ශාරීරික හානි කිරීම",
+    "simple_explanation_si": "මෙම වගන්තියෙන් නීතිය අනුව ශාරීරික හානි ලෙස සැලකෙන්නේ කුමක්ද යන්න විස්තර කරයි.",
+    "reporting_guidance_si": "දරුවාට ශාරීරික හානි සිදුවී ඇත්නම්, සාක්ෂි සුරක්ෂිත කර පොලිසියට හෝ NCPA වෙත දන්වන්න.",
     "keywords": [
       "hurt",
       "bodily pain",
@@ -185,6 +191,9 @@
     "abuse_category": "physical abuse",
     "legal_text_summary": "Defines grievous hurt to include serious injuries such as permanent loss or impairment of sight or hearing, loss or impairment of a limb or joint, permanent disfigurement, fractures, life-endangering injuries, and injuries causing severe pain or inability to follow ordinary pursuits for twenty days.",
     "simple_explanation": "This section defines serious physical injuries that the law treats as grievous hurt.",
+    "title_si": "ගැඹුරු ශාරීරික හානි",
+    "simple_explanation_si": "මෙම වගන්තියෙන් බරපතල හෝ දිගුකාලීන ශාරීරික හානි නීතිය අනුව සලකා බලන ආකාරය විස්තර කරයි.",
+    "reporting_guidance_si": "දරුවාට බරපතල තුවාල හෝ දිගුකාලීන හානි තිබේ නම් වහාම වෛද්‍ය සහ නීතිමය සහාය ලබාගන්න.",
     "keywords": [
       "grievous hurt",
       "serious injury",

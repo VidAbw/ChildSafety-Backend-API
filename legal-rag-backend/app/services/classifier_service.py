@@ -14,6 +14,12 @@ def classify_abuse(text: str) -> str:
         "no protection",
         "not cared for",
         "not looked after"
+        "නොසලකා",
+        "නොසලකා හරියි",
+        "නොසලකා හැරීම",
+        "කෑම නැහැ",
+        "ආරක්ෂාව නැහැ",
+        "තනිව දාලා",
     ]
 
     physical_keywords = [
@@ -27,6 +33,11 @@ def classify_abuse(text: str) -> str:
         "physically harmed",
         "physical abuse",
         "hurt"
+        "හිංසා",
+        "ගහනවා",
+        "පහර",
+        "තුවාල",
+        "රිදවයි",
     ]
 
     sexual_keywords = [

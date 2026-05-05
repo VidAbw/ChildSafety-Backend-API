@@ -27,7 +27,7 @@ async def rag_query(request: RAGQueryRequest):
     abuse_category = classify_abuse(request.description)
 
     # Retrieve relevant laws using RAG-style search
-    relevant_laws = retrieve_relevant_laws(request.description, abuse_category)
+    relevant_laws = retrieve_relevant_laws(request.description, abuse_category, request.language)
 
     # Generate roadmap
     decision_roadmap = generate_roadmap(abuse_category)
@@ -48,7 +48,7 @@ async def rag_query(request: RAGQueryRequest):
     print(f"Query processed: category={abuse_category}, response_time={response_time:.2f}s")
 
     return RAGQueryResponse(
-        detected_language=detected_lang,
+        detected_language=request.language,
         abuse_category=abuse_category,
         relevant_laws=relevant_laws,
         decision_roadmap=decision_roadmap,

@@ -9,7 +9,7 @@ from sentence_transformers import SentenceTransformer
 from app.schemas.legal_schema import LegalSection
 from app.schemas.rag_schema import RelevantLaw
 
-DATA_PATH = os.path.join(os.path.dirname(__file__), '..', 'data', 'legal_sections_penal.json')
+DATA_PATH = os.path.join(os.path.dirname(__file__), '..', 'data', 'legal_sections.json')
 INDEX_PATH = os.path.join(os.path.dirname(__file__), '..', 'vector_store', 'legal_index.faiss')
 IDS_PATH = os.path.join(os.path.dirname(__file__), '..', 'vector_store', 'ids.json')
 TEXTS_PATH = os.path.join(os.path.dirname(__file__), '..', 'vector_store', 'texts.json')
@@ -98,8 +98,9 @@ def import_legal_sections(sections: List[LegalSection], rebuild_index: bool = Tr
         build_faiss_index(sections)
 
 
-def retrieve_relevant_laws(query: str, abuse_category: str, top_k: int = 3) -> List[RelevantLaw]:
+def retrieve_relevant_laws(query: str, abuse_category: str, language: str, top_k: int = 3) -> List[RelevantLaw]:
     sections = load_legal_sections()
+    results = []
 
     try:
         index, ids = load_faiss_index()
@@ -117,9 +118,9 @@ def retrieve_relevant_laws(query: str, abuse_category: str, top_k: int = 3) -> L
             if section:
                 results.append(RelevantLaw(
                     section=section.section_number,
-                    title=f"{section.law_name} {section.section_number}",
-                    simple_explanation=section.simple_explanation,
-                    reporting_guidance=section.reporting_guidance,
+                    title=section.title_si if language == "si" and getattr(section, "title_si", None) else f"{section.law_name} {section.section_number}",
+                    simple_explanation=section.simple_explanation_si if language == "si" and getattr(section, "simple_explanation_si", None) else section.simple_explanation,
+                    reporting_guidance=section.reporting_guidance_si if language == "si" and getattr(section, "reporting_guidance_si", None) else section.reporting_guidance,
                     relevance_score=round(float(distances[0][rank]), 3)
                 ))
         if results:
@@ -135,12 +136,12 @@ def retrieve_relevant_laws(query: str, abuse_category: str, top_k: int = 3) -> L
         fallback = sections[:top_k]
 
     return [
-        RelevantLaw(
-            section=s.section_number,
-            title=f"{s.law_name} {s.section_number}",
-            simple_explanation=s.simple_explanation,
-            reporting_guidance=s.reporting_guidance,
-            relevance_score=None,
-        )
-        for s in fallback[:top_k]
-    ]
+    RelevantLaw(
+        section=s.section_number,
+        title=s.title_si if language == "si" and getattr(s, "title_si", None) else f"{s.law_name} {s.section_number}",
+        simple_explanation=s.simple_explanation_si if language == "si" and getattr(s, "simple_explanation_si", None) else s.simple_explanation,
+        reporting_guidance=s.reporting_guidance_si if language == "si" and getattr(s, "reporting_guidance_si", None) else s.reporting_guidance,
+        relevance_score=None,
+    )
+    for s in fallback[:top_k]
+]
