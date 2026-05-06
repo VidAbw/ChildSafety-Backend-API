@@ -35,8 +35,10 @@
     "law_name": "Sri Lanka Penal Code",
     "section_number": "286B",
     "abuse_category": "digital child abuse",
+    "title_si": "පරිගණක ආශ්‍රිත සේවා මගින් සිදුවන ළමා ලිංගික අපයෝජනය",
     "legal_text_summary": "A person providing a computer-based service must take necessary steps to ensure that the service is not used for acts relating to the sexual abuse of a child, and if aware of such use must inform the nearest police station.",
     "simple_explanation": "This section is about online platforms or computer services being used for child sexual abuse. If the provider knows about it, they must report it.",
+    "simple_explanation_si": "ළමා ලිංගික අපයෝජනය සඳහා අන්තර්ජාලය හෝ පරිගණක සේවා භාවිතා කරන විට, එම සේවා සපයන්නන් ඒ පිළිබඳව දැනුවත් නම් වහාම පොලිසියට දැනුම් දිය යුතුය.",
     "keywords": [
       "computer",
       "internet",
@@ -47,6 +49,7 @@
       "report"
     ],
     "reporting_guidance": "Where computer systems or online platforms are involved, preserve evidence and report to police without delay.",
+    "reporting_guidance_si": "පරිගණක පද්ධති හෝ අන්තර්ජාලය හරහා අපයෝජනය සිදුවන විට, සාක්ෂි සුරක්ෂිත කර වහාම පොලිසියට දන්වන්න.",
     "source": "Sri-Lanka-Penal-Code.pdf"
   },
   {
@@ -54,8 +57,10 @@
     "law_name": "Sri Lanka Penal Code",
     "section_number": "286C",
     "abuse_category": "child abuse reporting duty",
+    "title_si": "අපයෝජනය සඳහා පරිශ්‍රයන් භාවිතා කිරීම වාර්තා කිරීමේ වගකීම",
     "legal_text_summary": "Any person who has charge, care, control, or possession of premises and knows the premises are being used for child abuse must inform the officer in charge of the nearest police station.",
     "simple_explanation": "If someone knows that a house, room, building, or other place is being used to abuse a child, that person must report it.",
+    "simple_explanation_si": "නිවසක්, කාමරයක් හෝ යම් ස්ථානයක් ළමා අපයෝජනය සඳහා භාවිතා කරන බව යමෙකු දන්නේ නම්, ඔහු ඒ පිළිබඳව වහාම පොලිසියට දන්වා සිටිය යුතුය.",
     "keywords": [
       "premises",
       "child abuse",
@@ -65,6 +70,7 @@
       "duty"
     ],
     "reporting_guidance": "Urgent reporting is required where abuse is happening at a known location.",
+    "reporting_guidance_si": "යම් ස්ථානයක අපයෝජනයක් සිදුවන බව දැනගත් වහාම ඒ පිළිබඳව වාර්තා කිරීම අත්‍යවශ්‍ය වේ.",
     "source": "Sri-Lanka-Penal-Code.pdf"
   },
   {
