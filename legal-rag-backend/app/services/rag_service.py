@@ -1,4 +1,4 @@
-﻿import json
+import json
 import os
 from typing import List
 
@@ -123,25 +123,7 @@ def retrieve_relevant_laws(query: str, abuse_category: str, language: str, top_k
                     reporting_guidance=section.reporting_guidance_si if language == "si" and getattr(section, "reporting_guidance_si", None) else section.reporting_guidance,
                     relevance_score=round(float(distances[0][rank]), 3)
                 ))
-        if results:
-            return results
+        return results
     except Exception as e:
         print(f"FAISS search failed: {e}")
-
-    fallback = [
-        s for s in sections
-        if s.abuse_category and abuse_category.lower() in s.abuse_category.lower()
-    ]
-    if not fallback:
-        fallback = sections[:top_k]
-
-    return [
-    RelevantLaw(
-        section=s.section_number,
-        title=s.title_si if language == "si" and getattr(s, "title_si", None) else f"{s.law_name} {s.section_number}",
-        simple_explanation=s.simple_explanation_si if language == "si" and getattr(s, "simple_explanation_si", None) else s.simple_explanation,
-        reporting_guidance=s.reporting_guidance_si if language == "si" and getattr(s, "reporting_guidance_si", None) else s.reporting_guidance,
-        relevance_score=None,
-    )
-    for s in fallback[:top_k]
-]
+        return []

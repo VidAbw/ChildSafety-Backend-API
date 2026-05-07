@@ -16,8 +16,47 @@ import time
 
 router = APIRouter()
 
+def is_meaningful_input(text: str) -> bool:
+    """
+    Validates if the input description is meaningful and not gibberish.
+    """
+    text = text.strip()
+    if not text:
+        return False
+    
+    # Check minimum length
+    if len(text) < 15:
+        return False
+    
+    # Check for minimum number of words
+    words = text.split()
+    if len(words) < 4:
+        return False
+    
+    # Check for gibberish patterns
+    gibberish_patterns = ["asdf", "qwerty", "zxcv", "xxbbnn", "12345", "aaaa", "bbbb"]
+    lowered_text = text.lower()
+    if any(pattern in lowered_text for pattern in gibberish_patterns):
+        return False
+    
+    # Check for repeated meaningless patterns
+    if len(words) > 0:
+        unique_words = set(words)
+        # If very few unique words compared to total words (high repetition)
+        if len(unique_words) / len(words) < 0.3 and len(words) > 5:
+            return False
+
+    return True
+
 @router.post("/api/rag/query", response_model=RAGQueryResponse)
 async def rag_query(request: RAGQueryRequest):
+    # 1. Validate input quality
+    if not is_meaningful_input(request.description):
+        raise HTTPException(
+            status_code=400, 
+            detail="Please enter a meaningful abuse-related incident description."
+        )
+
     start_time = time.time()
 
     # Detect language
@@ -28,6 +67,14 @@ async def rag_query(request: RAGQueryRequest):
 
     # Retrieve relevant laws using RAG-style search
     relevant_laws = retrieve_relevant_laws(request.description, abuse_category, request.language)
+
+    # 2. Check for relevance threshold (e.g., 0.4)
+    # If no laws found or top match is too low
+    if not relevant_laws or (relevant_laws[0].relevance_score and relevant_laws[0].relevance_score < 0.4):
+        raise HTTPException(
+            status_code=400,
+            detail="The description does not match a valid child abuse-related legal situation."
+        )
 
     # Generate roadmap in the requested language
     decision_roadmap = generate_roadmap(abuse_category, request.language)
