@@ -5,6 +5,7 @@ class LegalSection(BaseModel):
     id: str
     law_name: str
     section_number: str
+    title: str | None = None
     abuse_category: str
     legal_text_summary: str
     simple_explanation: str

@@ -67,7 +67,7 @@ def build_faiss_index(sections: List[LegalSection] = None) -> None:
 
     model = get_model()
     texts = [
-        f"{section.law_name} {section.section_number} {section.legal_text_summary} {section.simple_explanation}"
+        f"{section.law_name} {section.section_number} {getattr(section, 'title', '') or ''} {section.legal_text_summary} {section.simple_explanation} {section.reporting_guidance} {section.title_si or ''} {section.simple_explanation_si or ''} {getattr(section, 'reporting_guidance_si', '') or ''}"
         for section in sections
     ]
     embeddings = model.encode(texts, convert_to_numpy=True, show_progress_bar=False)
@@ -100,30 +100,101 @@ def import_legal_sections(sections: List[LegalSection], rebuild_index: bool = Tr
 
 def retrieve_relevant_laws(query: str, abuse_category: str, language: str, top_k: int = 3) -> List[RelevantLaw]:
     sections = load_legal_sections()
-    results = []
+    
+    # 1. Filter sections by category mapping
+    filtered_sections = []
+    category_match = True
+    category_map = {
+        "sexual abuse": ["sexual", "rape", "incest", "prostitution", "csam", "exploitation", "obscene", "assault", "harassment", "child sexual"],
+        "physical abuse": ["physical", "cruelty", "hurt", "assault", "beating", "hitting", "injury", "maltreatment", "neglect", "grievous"],
+        "neglect": ["neglect", "abandonment", "exposure", "care", "without", "left alone"],
+        "trafficking": ["traffic", "kidnap", "abduction", "exploitation", "slavery", "bondage", "procurer", "transport", "sold", "buying", "selling"],
+        "digital abuse": ["digital", "online", "computer", "photos", "videos", "internet", "social media", "platform", "csam", "material"]
+    }
+    
+    target_keywords = category_map.get(abuse_category, [])
+    
+    for section in sections:
+        # Check if abuse_category field or keywords match
+        section_cat = section.abuse_category.lower()
+        section_keywords = [k.lower() for k in section.keywords]
+        
+        # Broad matching: if any target keyword appears in section category or keywords
+        match_found = False
+        if any(tk in section_cat for tk in target_keywords) or any(tk in k for tk in target_keywords for k in section_keywords):
+            match_found = True
+        
+        if match_found:
+            filtered_sections.append(section)
+        # Fallback for "general abuse" or if no match found but category is relevant
+        elif abuse_category == "general abuse":
+            filtered_sections.append(section)
+
+    if not filtered_sections:
+        # If no sections match the category, fall back to all sections but with a higher threshold later
+        category_match = False
+        filtered_sections = sections
 
     try:
-        index, ids = load_faiss_index()
         model = get_model()
         query_embedding = model.encode([query], convert_to_numpy=True, show_progress_bar=False).astype('float32')
-        faiss.normalize_L2(query_embedding)
-
-        distances, indices = index.search(query_embedding, top_k)
+        
+        # 2. Rank only filtered sections
+        section_texts = []
+        for s in filtered_sections:
+            if language == "si":
+                # For Sinhala, prioritize Sinhala fields to improve embedding similarity
+                text = f"{getattr(s, 'title_si', '') or ''} {getattr(s, 'simple_explanation_si', '') or ''} {getattr(s, 'reporting_guidance_si', '') or ''} {s.law_name} {s.section_number} {s.legal_text_summary} {' '.join(s.keywords)}"
+            else:
+                text = f"{s.law_name} {s.section_number} {getattr(s, 'title', '') or ''} {s.legal_text_summary} {s.simple_explanation} {s.reporting_guidance} {' '.join(s.keywords)}"
+            section_texts.append(text)
+            
+        section_embeddings = model.encode(section_texts, convert_to_numpy=True, show_progress_bar=False).astype('float32')
+        
+        # Calculate cosine similarities
+        query_norm = query_embedding / (np.linalg.norm(query_embedding) + 1e-9)
+        section_norms = section_embeddings / (np.linalg.norm(section_embeddings, axis=1, keepdims=True) + 1e-9)
+        similarities = np.dot(section_norms, query_norm.T).flatten()
+        
+        # Combine and sort
+        scored_results = []
+        for i, score in enumerate(similarities):
+            scored_results.append((score, filtered_sections[i]))
+            
+        scored_results.sort(key=lambda x: x[0], reverse=True)
+        
+        # 3. Filter by strong match threshold
+        # We use a lower threshold for Sinhala to ensure valid reports are not rejected
+        if language == "si":
+            RELEVANCE_THRESHOLD = 0.18  # Relaxed for Sinhala to handle linguistic variations
+        else:
+            RELEVANCE_THRESHOLD = 0.25 if category_match else 0.40
+            
+        # Optional: Boost score if category matches exactly (already handled by filtering, but this ensures higher ranking)
+        strong_matches = [res for res in scored_results if res[0] >= RELEVANCE_THRESHOLD]
+        
+        # Limit to top_k
+        final_results = strong_matches[:top_k]
+        
         results = []
-        for rank, idx in enumerate(indices[0]):
-            if idx < 0 or idx >= len(ids):
-                continue
-            section_id = ids[idx]
-            section = next((s for s in sections if s.id == section_id), None)
-            if section:
-                results.append(RelevantLaw(
-                    section=section.section_number,
-                    title=section.title_si if language == "si" and getattr(section, "title_si", None) else f"{section.law_name} {section.section_number}",
-                    simple_explanation=section.simple_explanation_si if language == "si" and getattr(section, "simple_explanation_si", None) else section.simple_explanation,
-                    reporting_guidance=section.reporting_guidance_si if language == "si" and getattr(section, "reporting_guidance_si", None) else section.reporting_guidance,
-                    relevance_score=round(float(distances[0][rank]), 3)
-                ))
+        for score, section in final_results:
+            # Determine English title fallback
+            english_title = getattr(section, "title", None) or f"{section.law_name} {section.section_number}"
+            
+            results.append(RelevantLaw(
+                section=section.section_number,
+                title=section.title_si if language == "si" and getattr(section, "title_si", None) else english_title,
+                title_en=english_title,
+                title_si=getattr(section, "title_si", None),
+                simple_explanation=section.simple_explanation_si if language == "si" and getattr(section, "simple_explanation_si", None) else section.simple_explanation,
+                simple_explanation_en=section.simple_explanation,
+                simple_explanation_si=getattr(section, "simple_explanation_si", None),
+                reporting_guidance=section.reporting_guidance_si if language == "si" and getattr(section, "reporting_guidance_si", None) else section.reporting_guidance,
+                reporting_guidance_en=section.reporting_guidance,
+                reporting_guidance_si=getattr(section, "reporting_guidance_si", None),
+                relevance_score=round(float(score), 3)
+            ))
         return results
     except Exception as e:
-        print(f"FAISS search failed: {e}")
+        print(f"Filtered search failed: {e}")
         return []

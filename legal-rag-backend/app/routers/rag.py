@@ -25,12 +25,12 @@ def is_meaningful_input(text: str) -> bool:
         return False
     
     # Check minimum length
-    if len(text) < 15:
+    if len(text) < 10:
         return False
     
     # Check for minimum number of words
     words = text.split()
-    if len(words) < 4:
+    if len(words) < 3:
         return False
     
     # Check for gibberish patterns
@@ -50,34 +50,55 @@ def is_meaningful_input(text: str) -> bool:
 
 @router.post("/api/rag/query", response_model=RAGQueryResponse)
 async def rag_query(request: RAGQueryRequest):
-    # 1. Validate input quality
+    # 1. Detect language early to provide localized error messages
+    detected_lang = detect_language(request.description)
+    language_to_use = request.language if request.language else detected_lang
+
+    # 2. Validate input quality
     if not is_meaningful_input(request.description):
+        error_msg = "Please enter a meaningful abuse-related incident description."
+        if language_to_use == "si":
+            error_msg = "කරුණාකර අර්ථවත් අපයෝජනයට අදාළ සිද්ධි විස්තරයක් ඇතුළත් කරන්න."
         raise HTTPException(
             status_code=400, 
-            detail="Please enter a meaningful abuse-related incident description."
+            detail=error_msg
         )
 
     start_time = time.time()
 
-    # Detect language
-    detected_lang = detect_language(request.description)
-
     # Classify abuse
     abuse_category = classify_abuse(request.description)
 
-    # Retrieve relevant laws using RAG-style search
-    relevant_laws = retrieve_relevant_laws(request.description, abuse_category, request.language)
+    # Retrieve relevant laws using filtered RAG-style search
+    relevant_laws = retrieve_relevant_laws(request.description, abuse_category, language_to_use)
 
-    # 2. Check for relevance threshold (e.g., 0.4)
-    # If no laws found or top match is too low
-    if not relevant_laws or (relevant_laws[0].relevance_score and relevant_laws[0].relevance_score < 0.4):
+    # 3. Check for relevance
+    if not relevant_laws:
+        error_msg = "The description does not match a valid child abuse-related legal situation. No strong legal match found."
+        if language_to_use == "si":
+            error_msg = "ඇතුළත් කළ විස්තරය ළමා අපයෝජනයට අදාළ නීතිමය තත්ත්වයකට නොගැලපේ. ශක්තිමත් නීතිමය ගැලපීමක් හමු නොවීය."
         raise HTTPException(
             status_code=400,
-            detail="The description does not match a valid child abuse-related legal situation."
+            detail=error_msg
         )
 
     # Generate roadmap in the requested language
-    decision_roadmap = generate_roadmap(abuse_category, request.language)
+    decision_roadmap = generate_roadmap(abuse_category, language_to_use)
+    
+    # Pre-generate bilingual roadmaps for the frontend
+    roadmap_en = generate_roadmap(abuse_category, "en")
+    roadmap_si = generate_roadmap(abuse_category, "si")
+    
+    # Map abuse category for frontend
+    category_si_map = {
+        "physical abuse": "ශාරීරික අපයෝජනය",
+        "sexual abuse": "ලිංගික අපයෝජනය",
+        "neglect": "නොසලකා හැරීම",
+        "trafficking": "ජාවාරම",
+        "digital abuse": "ඩිජිටල් අපයෝජනය",
+        "emotional abuse": "මානසික අපයෝජනය",
+        "general abuse": "සාමාන්‍ය අපයෝජනය"
+    }
 
     # Get contacts
     contacts = get_reporting_contacts()
@@ -95,10 +116,14 @@ async def rag_query(request: RAGQueryRequest):
     print(f"Query processed: category={abuse_category}, response_time={response_time:.2f}s")
 
     return RAGQueryResponse(
-        detected_language=request.language,
+        detected_language=language_to_use,
         abuse_category=abuse_category,
+        abuse_category_en=abuse_category.title(),
+        abuse_category_si=category_si_map.get(abuse_category, "සාමාන්්‍ය අපයෝජනය"),
         relevant_laws=relevant_laws,
         decision_roadmap=decision_roadmap,
+        decision_roadmap_en=roadmap_en,
+        decision_roadmap_si=roadmap_si,
         reporting_contacts=reporting_contacts,
         privacy_note=privacy_note
     )
