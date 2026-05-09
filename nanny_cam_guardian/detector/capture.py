@@ -12,6 +12,7 @@ import time
 
 import cv2
 import numpy as np
+import threading
 from dotenv import load_dotenv
 
 # Allow imports from project root when running this file directly
@@ -149,6 +150,76 @@ def _draw_status_banner(frame: np.ndarray, event: ThreatEvent) -> None:
         text += f"  ({event.probability:.0%})"
     cv2.putText(frame, text, (10, 28),
                 cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2)
+
+
+class NannyCamStreamer:
+    """Background thread to run the camera loop and yield JPEG frames for FastAPI streaming."""
+    def __init__(self):
+        self.cap = None
+        self.thread = None
+        self.running = False
+        self.latest_frame = None
+        self.lock = threading.Lock()
+
+        # We will lazy-initialize these when start() is called to avoid blocking the main API thread
+        self.yolo = None
+        self.pose = None
+        self.face = None
+        self.engine = None
+
+    def start(self):
+        if self.running: return
+        self.running = True
+        
+        # Initialize AI models on first start
+        if self.yolo is None:
+            self.yolo = YOLODetector()
+            self.pose = PoseEstimator()
+            self.face = FaceRecognizer()
+            self.engine = ThreatRuleEngine()
+
+        self.cap = cv2.VideoCapture(CAMERA_INDEX)
+        self.thread = threading.Thread(target=self._capture_loop, daemon=True)
+        self.thread.start()
+
+    def stop(self):
+        self.running = False
+        if self.thread:
+            self.thread.join(timeout=2.0)
+        if self.cap:
+            self.cap.release()
+            self.cap = None
+
+    def _capture_loop(self):
+        while self.running and self.cap and self.cap.isOpened():
+            ret, frame_bgr = self.cap.read()
+            if not ret:
+                time.sleep(0.1)
+                continue
+
+            timestamp = time.time()
+            frame_h = frame_bgr.shape[0]
+            frame_rgb = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2RGB)
+
+            detection = self.yolo.detect(frame_bgr)
+            all_kp = self.pose.extract_all(frame_rgb)
+            keypoints_map = self.pose.match_to_persons(all_kp, detection.persons, frame_bgr.shape[1], frame_h)
+            face_labels = self.face.identify(frame_bgr, detection.persons)
+            event = self.engine.evaluate(detection, keypoints_map, frame_h, timestamp, frame_width=frame_bgr.shape[1], face_labels=face_labels)
+
+            push_alert(event, USER_ID)
+
+            _draw_detections(frame_bgr, detection, keypoints_map, self.engine._trackers, face_labels)
+            _draw_status_banner(frame_bgr, event)
+
+            ret, buffer = cv2.imencode('.jpg', frame_bgr)
+            if ret:
+                with self.lock:
+                    self.latest_frame = buffer.tobytes()
+
+    def get_frame(self):
+        with self.lock:
+            return self.latest_frame
 
 
 def run():

@@ -1,11 +1,20 @@
 # main.py
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from nanny_cam_guardian import router as nanny_router
 # from audio_guardian import router as audio_router      # Member 2 — Audio Guardian
 # from chat_counselor import router as chat_router       # Member 3 — AI Counselor
 # from game import router as game_router                 # Member 4 — S-ALS Game
 
 app = FastAPI(title="Child Safety Guardian API")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # Connect the routers
 app.include_router(nanny_router.router, prefix="/api/iot", tags=["Nanny Cam Guardian (MM-ODG)"])
