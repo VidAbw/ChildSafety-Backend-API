@@ -12,6 +12,16 @@ logging.basicConfig(level=logging.INFO)
 
 app = FastAPI(title="Child Safety Guardian API")
 
+from fastapi.middleware.cors import CORSMiddleware
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Allow frontend origin, e.g. http://localhost:8081
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 # Connect the routers
 app.include_router(nanny_router.router, prefix="/api/iot", tags=["Nanny Cam Guardian (MM-ODG)"])
 app.include_router(audio_router, prefix="/api/audio", tags=["Audio Guardian"])

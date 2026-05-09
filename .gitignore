@@ -13,6 +13,16 @@ audio model training/ESC-50-master/
 audio model training/TESS Toronto emotional speech set data/
 audio model training/Training_Data/
 audio model training/audio_speech_actors_01-24/
-audio model training/*.zip
-audio model training/*.mp4
-audio model training/**/*.wav
+
+# Exclude auto-generated or large audio files
+*.zip
+*.wav
+*.mp4
+**/*.wav
+
+# Exclude config data
+audio_guardian_config.json
+
+# Exclude pycache globally
+*/__pycache__/
+**/*.pyc
