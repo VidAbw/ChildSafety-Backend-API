@@ -9,6 +9,7 @@ import librosa
 import numpy as np
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
 warnings.filterwarnings("ignore", category=UserWarning)
 
@@ -122,9 +123,8 @@ class ThreatPredictor:
                 probabilities = torch.softmax(outputs, dim=1)
                 
                 prob_threat = probabilities[0][1].item()
-                predicted_class = 1 if prob_threat > 0.5 else 0
                 
-            return predicted_class, prob_threat
+            return prob_threat
             
         except Exception as e:
             logger.error(f"Error during prediction: {e}")

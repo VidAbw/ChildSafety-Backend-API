@@ -13,6 +13,7 @@ logger = logging.getLogger(__name__)
 
 PARENT_PROFILE_PATH = Path("parent_profile.wav")
 CONFIG_PATH = Path("audio_guardian_config.json")
+AI_THREAT_THRESHOLD = 0.80
 
 router = APIRouter()
 
