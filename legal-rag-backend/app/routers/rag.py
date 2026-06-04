@@ -84,22 +84,22 @@ async def rag_query(request: RAGQueryRequest):
             detail=error_msg
         )
 
-    # Generate roadmap in the requested language
-    decision_roadmap = generate_roadmap(abuse_category, language_to_use)
+    # Generate roadmap in the requested language using description and category
+    decision_roadmap = generate_roadmap(request.description, abuse_category, language_to_use)
     
     # Pre-generate bilingual roadmaps for the frontend
-    roadmap_en = generate_roadmap(abuse_category, "en")
-    roadmap_si = generate_roadmap(abuse_category, "si")
+    roadmap_en = generate_roadmap(request.description, abuse_category, "en")
+    roadmap_si = generate_roadmap(request.description, abuse_category, "si")
     
     # Map abuse category for frontend
     category_si_map = {
-        "physical abuse": "ශාරීරික අපයෝජනය",
-        "sexual abuse": "ලිංගික අපයෝජනය",
+        "physical_abuse": "ශාරීරික අපයෝජනය",
+        "sexual_abuse": "ලිංගික අපයෝජනය",
         "neglect": "නොසලකා හැරීම",
-        "trafficking": "ජාවාරම",
-        "digital abuse": "ඩිජිටල් අපයෝජනය",
-        "emotional abuse": "මානසික අපයෝජනය",
-        "general abuse": "සාමාන්‍ය අපයෝජනය"
+        "trafficking_exploitation": "ජාවාරම සහ සූරාකෑම",
+        "emotional_abuse": "මානසික අපයෝජනය",
+        "psychological_trauma_counseling_need": "මානසික කෲරත්වය සහ උපදේශන අවශ්‍යතාවය",
+        "general_child_protection": "සාමාන්‍ය ළමා ආරක්ෂණය"
     }
 
     # Get contacts
@@ -112,16 +112,14 @@ async def rag_query(request: RAGQueryRequest):
 
     privacy_note = "The description is processed for legal guidance and should not be stored with personal details."
 
-    response_time = time.time() - start_time
-
     # For prototype, don't save feedback yet, but log
-    print(f"Query processed: category={abuse_category}, response_time={response_time:.2f}s")
+    print(f"Query processed: category={abuse_category}")
 
     return RAGQueryResponse(
         detected_language=language_to_use,
         abuse_category=abuse_category,
-        abuse_category_en=abuse_category.title(),
-        abuse_category_si=category_si_map.get(abuse_category, "සාමාන්්‍ය අපයෝජනය"),
+        abuse_category_en=abuse_category.replace("_", " ").title(),
+        abuse_category_si=category_si_map.get(abuse_category, "සාමාන්‍ය ළමා ආරක්ෂණය"),
         relevant_laws=relevant_laws,
         decision_roadmap=decision_roadmap,
         decision_roadmap_en=roadmap_en,

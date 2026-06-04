@@ -113,7 +113,7 @@ def is_supporting_law_relevant(section_id: str, query: str, abuse_category: str)
             "gedara", "gedaraka", "kamare", "wahuwa", "waha", "hira", "koodu", "gewal", "gewala",
             "නිවස", "නිවසේ", "ගෙදර", "ගෙදරක", "කාමරය", "කාමරයක", "ගොඩනැගිල්ල", "පාසල", "ඇතුලේ", "හිරකර", "කොටු", "පරිශ්‍ර"
         ]
-        is_physical_or_general = abuse_category in ["physical abuse", "general abuse"]
+        is_physical_or_general = abuse_category in ["physical_abuse", "general_child_protection"]
         has_premises_keyword = any(kw in query_lower for kw in premises_keywords)
         return is_physical_or_general and has_premises_keyword
 
@@ -127,7 +127,7 @@ def is_supporting_law_relevant(section_id: str, query: str, abuse_category: str)
             "පැමිණිල්ලක්", "පැමිණිලි", "ඇමතුම්", "දුරකථන", "අංකය", "කාර්යාලය", "වාර්තා"
         ]
         is_general_q = any(kw in query_lower for kw in general_q_keywords)
-        return abuse_category != "general abuse" or not is_general_q
+        return abuse_category != "general_child_protection" or not is_general_q
 
     return True
 
@@ -139,12 +139,13 @@ def retrieve_relevant_laws(query: str, abuse_category: str, language: str, top_k
     filtered_sections = []
     category_match = True
     category_map = {
-        "sexual abuse": ["sexual", "rape", "incest", "prostitution", "csam", "exploitation", "obscene", "assault", "harassment", "child sexual"],
-        "physical abuse": ["physical", "cruelty", "hurt", "assault", "beating", "hitting", "injury", "maltreatment", "neglect", "grievous"],
+        "sexual_abuse": ["sexual", "rape", "incest", "prostitution", "csam", "exploitation", "obscene", "assault", "harassment", "child sexual"],
+        "physical_abuse": ["physical", "cruelty", "hurt", "assault", "beating", "hitting", "injury", "maltreatment", "neglect", "grievous"],
         "neglect": ["neglect", "abandonment", "exposure", "care", "without", "left alone"],
-        "trafficking": ["traffic", "kidnap", "abduction", "exploitation", "slavery", "bondage", "procurer", "transport", "sold", "buying", "selling"],
-        "digital abuse": ["digital", "online", "computer", "photos", "videos", "internet", "social media", "platform", "csam", "material"],
-        "emotional abuse": ["emotional", "mental", "trauma", "cruelty", "shouting", "insulting", "bullying", "suffering", "harassment"]
+        "trafficking_exploitation": ["traffic", "kidnap", "abduction", "exploitation", "slavery", "bondage", "procurer", "transport", "sold", "buying", "selling"],
+        "emotional_abuse": ["emotional", "mental", "trauma", "cruelty", "shouting", "insulting", "bullying", "suffering", "harassment"],
+        "psychological_trauma_counseling_need": ["mental", "trauma", "counseling", "therapy", "psychologist", "emotional", "suffering", "harassment"],
+        "general_child_protection": []
     }
     
     target_keywords = category_map.get(abuse_category, [])
@@ -167,8 +168,8 @@ def retrieve_relevant_laws(query: str, abuse_category: str, language: str, top_k
         
         if match_found:
             filtered_sections.append(section)
-        # Fallback for "general abuse" or if no match found but category is relevant
-        elif abuse_category == "general abuse":
+        # Fallback for "general_child_protection" or if no match found but category is relevant
+        elif abuse_category == "general_child_protection":
             filtered_sections.append(section)
 
     if not filtered_sections:
