@@ -7,6 +7,8 @@ class RAGQueryRequest(BaseModel):
 
 class RelevantLaw(BaseModel):
     section: str
+    law_name: Optional[str] = None
+    law_type: Optional[str] = "primary"
     title: str
     title_en: Optional[str] = None
     title_si: Optional[str] = None

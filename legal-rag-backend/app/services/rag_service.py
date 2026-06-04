@@ -98,6 +98,40 @@ def import_legal_sections(sections: List[LegalSection], rebuild_index: bool = Tr
         build_faiss_index(sections)
 
 
+def is_supporting_law_relevant(section_id: str, query: str, abuse_category: str) -> bool:
+    """
+    Determines if a supporting law (e.g. NCPA Act section) is relevant to the description.
+    """
+    query_lower = query.lower()
+    
+    if section_id == "ncpa_33":
+        # Section 33 is "Power to Enter and Inspect Premises"
+        # Only relevant if there is physical or general abuse happening inside a premises
+        premises_keywords = [
+            "house", "home", "room", "premises", "inside", "locked", "building", "school", 
+            "center", "place", "orphanage", "neighbor", "neighbour", "hostel", "apartment", "institution", "location",
+            "gedara", "gedaraka", "kamare", "wahuwa", "waha", "hira", "koodu", "gewal", "gewala",
+            "නිවස", "නිවසේ", "ගෙදර", "ගෙදරක", "කාමරය", "කාමරයක", "ගොඩනැගිල්ල", "පාසල", "ඇතුලේ", "හිරකර", "කොටු", "පරිශ්‍ර"
+        ]
+        is_physical_or_general = abuse_category in ["physical abuse", "general abuse"]
+        has_premises_keyword = any(kw in query_lower for kw in premises_keywords)
+        return is_physical_or_general and has_premises_keyword
+
+    elif section_id == "ncpa_39":
+        # Section 39 is "Definition of Child Abuse"
+        # Relevant for active child abuse incidents, but not for general admin/helpline questions
+        general_q_keywords = [
+            "how to complain", "how do i make a complaint", "make a complaint", "use the helpline", 
+            "helpline", "hotline", "contact", "number", "telephone", "address", "where is", "report to",
+            "complaint", "durakathana", "ankaya", "paminili",
+            "පැමිණිල්ලක්", "පැමිණිලි", "ඇමතුම්", "දුරකථන", "අංකය", "කාර්යාලය", "වාර්තා"
+        ]
+        is_general_q = any(kw in query_lower for kw in general_q_keywords)
+        return abuse_category != "general abuse" or not is_general_q
+
+    return True
+
+
 def retrieve_relevant_laws(query: str, abuse_category: str, language: str, top_k: int = 3) -> List[RelevantLaw]:
     sections = load_legal_sections()
     
@@ -109,13 +143,20 @@ def retrieve_relevant_laws(query: str, abuse_category: str, language: str, top_k
         "physical abuse": ["physical", "cruelty", "hurt", "assault", "beating", "hitting", "injury", "maltreatment", "neglect", "grievous"],
         "neglect": ["neglect", "abandonment", "exposure", "care", "without", "left alone"],
         "trafficking": ["traffic", "kidnap", "abduction", "exploitation", "slavery", "bondage", "procurer", "transport", "sold", "buying", "selling"],
-        "digital abuse": ["digital", "online", "computer", "photos", "videos", "internet", "social media", "platform", "csam", "material"]
+        "digital abuse": ["digital", "online", "computer", "photos", "videos", "internet", "social media", "platform", "csam", "material"],
+        "emotional abuse": ["emotional", "mental", "trauma", "cruelty", "shouting", "insulting", "bullying", "suffering", "harassment"]
     }
     
     target_keywords = category_map.get(abuse_category, [])
     
     for section in sections:
-        # Check if abuse_category field or keywords match
+        # Include supporting laws in search candidates only if they are contextually relevant to the description
+        if getattr(section, "law_type", "primary") == "supporting":
+            if is_supporting_law_relevant(section.id, query, abuse_category):
+                filtered_sections.append(section)
+            continue
+
+        # Check if abuse_category field or keywords match for primary laws
         section_cat = section.abuse_category.lower()
         section_keywords = [k.lower() for k in section.keywords]
         
@@ -165,16 +206,18 @@ def retrieve_relevant_laws(query: str, abuse_category: str, language: str, top_k
         
         # 3. Filter by strong match threshold
         # We use a lower threshold for Sinhala to ensure valid reports are not rejected
-        if language == "si":
-            RELEVANCE_THRESHOLD = 0.18  # Relaxed for Sinhala to handle linguistic variations
+        if (language == "si"):
+            RELEVANCE_THRESHOLD = 0.15  # Relaxed for Sinhala to handle linguistic variations
         else:
-            RELEVANCE_THRESHOLD = 0.25 if category_match else 0.40
+            RELEVANCE_THRESHOLD = 0.20 if category_match else 0.35
             
         # Optional: Boost score if category matches exactly (already handled by filtering, but this ensures higher ranking)
         strong_matches = [res for res in scored_results if res[0] >= RELEVANCE_THRESHOLD]
         
-        # Limit to top_k
-        final_results = strong_matches[:top_k]
+        # Partition results into primary and supporting laws so they do not compete/squeeze each other out
+        primary_matches = [res for res in strong_matches if getattr(res[1], "law_type", "primary") == "primary"][:top_k]
+        supporting_matches = [res for res in strong_matches if getattr(res[1], "law_type", "primary") == "supporting"][:top_k]
+        final_results = primary_matches + supporting_matches
         
         results = []
         for score, section in final_results:
@@ -183,6 +226,8 @@ def retrieve_relevant_laws(query: str, abuse_category: str, language: str, top_k
             
             results.append(RelevantLaw(
                 section=section.section_number,
+                law_name=section.law_name,
+                law_type=getattr(section, "law_type", "primary"),
                 title=section.title_si if language == "si" and getattr(section, "title_si", None) else english_title,
                 title_en=english_title,
                 title_si=getattr(section, "title_si", None),

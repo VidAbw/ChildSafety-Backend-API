@@ -35,6 +35,12 @@ def classify_abuse(text: str) -> str:
             "online", "internet", "computer", "photos", "videos", "platform", 
             "digital abuse", "cyber", "internet safety", "social media",
             "අන්තර්ජාල", "පරිගණක", "මුහුණුපොත", "වීඩියෝ", "ඡායාරූප", "දෘශ්ය"
+        ],
+        "emotional abuse": [
+            "emotional", "mental", "trauma", "shouting", "insulting", "bullying",
+            "harassment", "scare", "scared", "fear", "threat", "threatening",
+            "මානසික", "බියවැද්දීම", "තර්ජනය", "හිරිහැර", "කෑගැසීම", "අපහාස",
+            "මානසිකව", "බිය"
         ]
     }
 

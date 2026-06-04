@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Any, Dict, List
 
 ROOT = Path(__file__).resolve().parent.parent
-INPUT_PATH = ROOT / "pinal.json"
+INPUT_PATH = ROOT / "penal.json"
 OUTPUT_PATH = ROOT / "app" / "data" / "legal_sections_penal.json"
 DEFAULT_DATA_PATH = ROOT / "app" / "data" / "legal_sections.json"
 
@@ -14,9 +14,14 @@ def normalize_section(raw: Dict[str, Any]) -> Dict[str, Any]:
         "id": str(raw.get("id", "")),
         "law_name": raw.get("law_name", ""),
         "section_number": str(raw.get("section_number", "")),
+        "law_type": raw.get("law_type", "primary"),
+        "title": raw.get("title", ""),
         "abuse_category": raw.get("category", raw.get("sub_category", "")),
         "legal_text_summary": raw.get("legal_text_summary_en", raw.get("legal_text_summary", "")),
         "simple_explanation": raw.get("simple_explanation_en", raw.get("simple_explanation", "")),
+        "title_si": raw.get("title_si", ""),
+        "simple_explanation_si": raw.get("simple_explanation_si", ""),
+        "reporting_guidance_si": raw.get("reporting_guidance_si", ""),
         "keywords": raw.get("keywords", []),
         "reporting_guidance": raw.get("reporting_guidance", ""),
         "source": raw.get("source_document", raw.get("source", "")),
@@ -35,8 +40,8 @@ def save_output(data: List[Dict[str, Any]], path: Path) -> None:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Convert pinal.json to RAG legal section schema.")
-    parser.add_argument("--input", type=Path, default=INPUT_PATH, help="Path to the source pinal.json file.")
+    parser = argparse.ArgumentParser(description="Convert penal.json to RAG legal section schema.")
+    parser.add_argument("--input", type=Path, default=INPUT_PATH, help="Path to the source penal.json file.")
     parser.add_argument("--output", type=Path, default=OUTPUT_PATH, help="Path to the converted output JSON file.")
     parser.add_argument("--overwrite", action="store_true", help="Also overwrite app/data/legal_sections.json with the converted data.")
     args = parser.parse_args()

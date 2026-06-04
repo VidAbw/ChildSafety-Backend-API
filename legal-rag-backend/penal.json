@@ -573,5 +573,41 @@
     "punishment_summary": "Imprisonment of either description up to 2 years or fine or both.",
     "reporting_guidance": "Do not reveal the victim’s identity in system outputs unless legally authorized.",
     "source_document": "Sri-Lanka-Penal-Code.pdf"
+  },
+  {
+    "id": "ncpa_39",
+    "law_name": "National Child Protection Authority Act, No. 50 of 1998",
+    "section_number": "39",
+    "law_type": "supporting",
+    "title": "Definition of Child Abuse",
+    "title_si": "ළමා අපයෝජනය පිළිබඳ අර්ථ දැක්වීම",
+    "category": "general abuse",
+    "sub_category": "legal definitions",
+    "legal_text_summary_en": "Defines a child as any person under 18 years of age. Defines child abuse as any act or omission violating the Penal Code, Children and Young Persons Ordinance, Employment of Women, Young Persons and Children Act, or compulsory education regulations, and explicitly includes child involvement in armed conflict.",
+    "simple_explanation_en": "This section defines a child as anyone under 18 and defines child abuse broadly to cover criminal offences, exploitation, neglect, and child soldier recruitment.",
+    "simple_explanation_si": "මෙම වගන්තිය මගින් වයස අවුරුදු 18 ට අඩු සෑම කෙනෙකුම ළමයෙකු ලෙස අර්ථ දක්වන අතර, ළමා අපයෝජනය යන්න අපරාධ වැරදි, සූරාකෑම, නොසලකා හැරීම සහ ළමා සොල්දාදුවන් බඳවා ගැනීම ඇතුළත් වන සේ පුළුල් ලෙස අර්ථ දක්වයි.",
+    "keywords": ["child", "definition", "age limit", "under 18", "child abuse", "jurisdiction"],
+    "punishment_summary": null,
+    "reporting_guidance": "Use this section to establish legal standing and age thresholds for child abuse victims under 18 years.",
+    "reporting_guidance_si": "වයස අවුරුදු 18 ට අඩු ළමා අපයෝජන වින්දිතයින් සඳහා නීතිමය තත්ත්වය සහ වයස් සීමාවන් තහවුරු කිරීමට මෙම වගන්තිය භාවිතා කරන්න.",
+    "source_document": "NCPA-Act-No-50-of-1998.pdf"
+  },
+  {
+    "id": "ncpa_33",
+    "law_name": "National Child Protection Authority Act, No. 50 of 1998",
+    "section_number": "33",
+    "law_type": "supporting",
+    "title": "Power to Enter and Inspect Premises",
+    "title_si": "පරිශ්‍රයන්ට ඇතුල්වීමේ සහ පරීක්ෂා කිරීමේ බලය",
+    "category": "physical abuse",
+    "sub_category": "powers of authorized officers",
+    "legal_text_summary_en": "Empowers authorized NCPA officers to enter and inspect any premises (without warrant under emergency circumstances) where child abuse is suspected. Officers possess the powers of peace officers under criminal procedure.",
+    "simple_explanation_en": "Authorized NCPA officers have the legal power of peace officers (police) to enter and search any home, school, or building if they believe a child is being abused inside.",
+    "simple_explanation_si": "කිසියම් නිවසක්, පාසලක් හෝ ගොඩනැගිල්ලක් තුළ දරුවෙකු අපයෝජනයට ලක්වන බව විශ්වාස කරන්නේ නම්, එහි ඇතුළු වී පරීක්ෂා කිරීමට බලයලත් NCPA නිලධාරීන්ට සාම නිලධාරීන්ගේ (පොලිස්) නීතිමය බලය ඇත.",
+    "keywords": ["enter", "inspect", "premises", "search", "officer", "rescue", "house", "warrant"],
+    "punishment_summary": "Obstructing an officer is a punishable offense under the Act.",
+    "reporting_guidance": "If a child is locked up or being abused in a specific home or center, report immediately. NCPA officers can legally enter and inspect the premises to rescue the child.",
+    "reporting_guidance_si": "දරුවෙකු නිවසක හෝ මධ්‍යස්ථානයක කොටු වී හෝ අපයෝජනයට ලක්වන්නේ නම් වහාම වාර්තා කරන්න. දරුවා බේරා ගැනීම සඳහා එම පරිශ්‍රයට ඇතුළු වී පරීක්ෂා කිරීමට NCPA නිලධාරීන්ට නීත්‍යානුකූලව බලය ඇත.",
+    "source_document": "NCPA-Act-No-50-of-1998.pdf"
   }
 ]

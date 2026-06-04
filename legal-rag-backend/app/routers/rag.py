@@ -24,13 +24,13 @@ def is_meaningful_input(text: str) -> bool:
     if not text:
         return False
     
-    # Check minimum length
-    if len(text) < 10:
+    # Check minimum length (aligned with frontend)
+    if len(text) < 5:
         return False
     
     # Check for minimum number of words
     words = text.split()
-    if len(words) < 3:
+    if len(words) < 2:
         return False
     
     # Check for gibberish patterns
@@ -43,7 +43,7 @@ def is_meaningful_input(text: str) -> bool:
     if len(words) > 0:
         unique_words = set(words)
         # If very few unique words compared to total words (high repetition)
-        if len(unique_words) / len(words) < 0.3 and len(words) > 5:
+        if len(unique_words) / len(words) < 0.2 and len(words) > 8:
             return False
 
     return True
@@ -56,6 +56,7 @@ async def rag_query(request: RAGQueryRequest):
 
     # 2. Validate input quality
     if not is_meaningful_input(request.description):
+        print(f"Rejected: Input not meaningful. Length: {len(request.description)}, Words: {len(request.description.split())}")
         error_msg = "Please enter a meaningful abuse-related incident description."
         if language_to_use == "si":
             error_msg = "කරුණාකර අර්ථවත් අපයෝජනයට අදාළ සිද්ධි විස්තරයක් ඇතුළත් කරන්න."
@@ -74,6 +75,7 @@ async def rag_query(request: RAGQueryRequest):
 
     # 3. Check for relevance
     if not relevant_laws:
+        print(f"Rejected: No relevant laws found for description (category: {abuse_category})")
         error_msg = "The description does not match a valid child abuse-related legal situation. No strong legal match found."
         if language_to_use == "si":
             error_msg = "ඇතුළත් කළ විස්තරය ළමා අපයෝජනයට අදාළ නීතිමය තත්ත්වයකට නොගැලපේ. ශක්තිමත් නීතිමය ගැලපීමක් හමු නොවීය."
