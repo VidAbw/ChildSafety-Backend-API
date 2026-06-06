@@ -132,12 +132,69 @@ def is_supporting_law_relevant(section_id: str, query: str, abuse_category: str)
     return True
 
 
+# Map of section_number -> group_id to cluster related sections
+SECTION_GROUPS = {
+    # Hurt / Grievous Hurt
+    "310": "hurt_group",
+    "311": "hurt_group",
+    "312": "hurt_group",
+    "313": "hurt_group",
+    "314": "hurt_group",
+    "315": "hurt_group",
+    "316": "hurt_group",
+    "317": "hurt_group",
+    "318": "hurt_group",
+    
+    # Obscene material / digital CSAM
+    "286A": "obscene_group",
+    "286B": "obscene_group",
+    
+    # Rape / Grave Sexual Abuse / Sexual Offences
+    "363": "rape_group",
+    "364": "rape_group",
+    "364A": "rape_group",
+    "365": "unnatural_group",
+    "365A": "gross_indecency_group",
+    "365B": "grave_sexual_abuse_group",
+    "365C": "privacy_group",
+    
+    # Kidnapping & Abduction
+    "350": "kidnap_group",
+    "351": "kidnap_group",
+    "352": "kidnap_group",
+    "353": "kidnap_group",
+    "356": "kidnap_group",
+    "357": "kidnap_group",
+    "358": "kidnap_group",
+    "358A": "kidnap_group",
+}
+
+
+def get_section_role(title: str, simple_explanation: str) -> str:
+    """
+    Classifies a section as 'punishment', 'definition', or 'offence'
+    based on terminology in the title or explanation.
+    """
+    title_lower = title.lower()
+    explanation_lower = simple_explanation.lower()
+    
+    if any(w in title_lower for w in ["punishment", "penalty", "sentencing"]):
+        return "punishment"
+    if any(w in explanation_lower for w in ["දඬුවම්", "දඬුවම", "දණ්ඩනය"]):
+        return "punishment"
+        
+    if any(w in title_lower for w in ["definition", "defines", "meaning"]):
+        return "definition"
+    if "අර්ථ දැක්වීම" in explanation_lower or "අර්ථදැක්වීම" in explanation_lower or "නිර්වචනය" in explanation_lower or "රිදවීමට හේතුව" in title_lower:
+        return "definition"
+        
+    return "offence"
+
+
 def retrieve_relevant_laws(query: str, abuse_category: str, language: str, top_k: int = 3) -> List[RelevantLaw]:
     sections = load_legal_sections()
     
-    # 1. Filter sections by category mapping
-    filtered_sections = []
-    category_match = True
+    # Define category map for soft boosting
     category_map = {
         "sexual_abuse": ["sexual", "rape", "incest", "prostitution", "csam", "exploitation", "obscene", "assault", "harassment", "child sexual"],
         "physical_abuse": ["physical", "cruelty", "hurt", "assault", "beating", "hitting", "injury", "maltreatment", "neglect", "grievous"],
@@ -150,38 +207,58 @@ def retrieve_relevant_laws(query: str, abuse_category: str, language: str, top_k
     
     target_keywords = category_map.get(abuse_category, [])
     
+    # Coarse-grained category routing to map predicted category to allowed DB categories
+    CATEGORY_ROUTING = {
+        "sexual_abuse": [
+            "sexual abuse", "child sexual exploitation", "digital child abuse", 
+            "victim privacy protection", "general abuse", "child abuse reporting duty", 
+            "sexual abuse and harassment", "sexual exploitation", "child soliciting"
+        ],
+        "physical_abuse": [
+            "physical abuse", "child physical abuse and neglect", "child neglect", 
+            "child abuse reporting duty", "general abuse", "concealment related offence",
+            "aggravated physical abuse", "serious physical abuse", "serious aggravated physical abuse", 
+            "coercive physical abuse"
+        ],
+        "neglect": [
+            "child neglect", "child physical abuse and neglect", "general abuse", 
+            "child abuse reporting duty", "concealment related offence"
+        ],
+        "trafficking_exploitation": [
+            "child exploitation", "general abuse", "child abuse reporting duty",
+            "kidnapping and abduction", "kidnapping and serious violence", 
+            "severe exploitation", "trafficking and severe exploitation", "adoption related offence"
+        ],
+        "emotional_abuse": [
+            "child physical abuse and neglect", "general abuse", "victim privacy protection"
+        ],
+        "psychological_trauma_counseling_need": [
+            "general abuse"
+        ],
+        "general_child_protection": []  # Allows all categories
+    }
+
+    allowed_categories = CATEGORY_ROUTING.get(abuse_category, [])
+
+    # 1. Filter candidates: Keep primary laws that match allowed categories, and only contextually relevant supporting laws
+    filtered_sections = []
     for section in sections:
-        # Include supporting laws in search candidates only if they are contextually relevant to the description
         if getattr(section, "law_type", "primary") == "supporting":
             if is_supporting_law_relevant(section.id, query, abuse_category):
                 filtered_sections.append(section)
-            continue
-
-        # Check if abuse_category field or keywords match for primary laws
-        section_cat = section.abuse_category.lower()
-        section_keywords = [k.lower() for k in section.keywords]
-        
-        # Broad matching: if any target keyword appears in section category or keywords
-        match_found = False
-        if any(tk in section_cat for tk in target_keywords) or any(tk in k for tk in target_keywords for k in section_keywords):
-            match_found = True
-        
-        if match_found:
-            filtered_sections.append(section)
-        # Fallback for "general_child_protection" or if no match found but category is relevant
-        elif abuse_category == "general_child_protection":
-            filtered_sections.append(section)
+        else:
+            # Check if category matches allowed categories for the predicted abuse category
+            if not allowed_categories or section.abuse_category.lower() in [c.lower() for c in allowed_categories]:
+                filtered_sections.append(section)
 
     if not filtered_sections:
-        # If no sections match the category, fall back to all sections but with a higher threshold later
-        category_match = False
-        filtered_sections = sections
+        return []
 
     try:
         model = get_model()
         query_embedding = model.encode([query], convert_to_numpy=True, show_progress_bar=False).astype('float32')
         
-        # 2. Rank only filtered sections
+        # 2. Rank candidate sections
         section_texts = []
         for s in filtered_sections:
             if language == "si":
@@ -198,34 +275,57 @@ def retrieve_relevant_laws(query: str, abuse_category: str, language: str, top_k
         section_norms = section_embeddings / (np.linalg.norm(section_embeddings, axis=1, keepdims=True) + 1e-9)
         similarities = np.dot(section_norms, query_norm.T).flatten()
         
-        # Combine and sort
+        # Combine and apply soft category boost and role penalties
         scored_results = []
         for i, score in enumerate(similarities):
-            scored_results.append((score, filtered_sections[i]))
+            section = filtered_sections[i]
             
-        scored_results.sort(key=lambda x: x[0], reverse=True)
-        
-        # 3. Filter by strong match threshold
-        # We use a lower threshold for Sinhala to ensure valid reports are not rejected
-        if (language == "si"):
-            RELEVANCE_THRESHOLD = 0.15  # Relaxed for Sinhala to handle linguistic variations
-        else:
-            RELEVANCE_THRESHOLD = 0.20 if category_match else 0.35
+            # Check if category matches
+            section_cat = section.abuse_category.lower()
+            section_keywords = [k.lower() for k in section.keywords]
             
-        # Optional: Boost score if category matches exactly (already handled by filtering, but this ensures higher ranking)
+            category_match = (
+                section_cat == abuse_category.lower() or
+                any(tk in section_cat for tk in target_keywords) or
+                any(tk in k for tk in target_keywords for k in section_keywords)
+            )
+            
+            # Substantive vs Definition/Punishment ranking adjustment (Strategy 3)
+            role = get_section_role(section.title or "", section.simple_explanation)
+            penalty = 0.0
+            if role == "punishment":
+                penalty = 0.04
+            elif role == "definition":
+                penalty = 0.08
+                
+            boosted_score = score
+            if category_match:
+                # Add a soft boost of +0.05 for category matching
+                boosted_score += 0.05
+            boosted_score -= penalty
+            
+            # Limit between 0.0 and 1.0
+            boosted_score = max(0.0, min(float(boosted_score), 1.0))
+            
+            scored_results.append((boosted_score, section))
+            
+        # 3. Filter by threshold (no strict pre-filtering blocker, dynamic list)
+        RELEVANCE_THRESHOLD = 0.20
+            
         strong_matches = [res for res in scored_results if res[0] >= RELEVANCE_THRESHOLD]
         
-        # Partition results into primary and supporting laws so they do not compete/squeeze each other out
-        primary_matches = [res for res in strong_matches if getattr(res[1], "law_type", "primary") == "primary"][:top_k]
-        supporting_matches = [res for res in strong_matches if getattr(res[1], "law_type", "primary") == "supporting"][:top_k]
-        final_results = primary_matches + supporting_matches
+        # Sort by strongest match first
+        strong_matches.sort(key=lambda x: x[0], reverse=True)
         
-        results = []
-        for score, section in final_results:
+        # 4. Group results into parent-child structure (Strategy 1)
+        grouped_results = []
+        seen_groups = {}  # group_id -> parent_RelevantLaw
+        
+        for score, section in strong_matches:
             # Determine English title fallback
             english_title = getattr(section, "title", None) or f"{section.law_name} {section.section_number}"
             
-            results.append(RelevantLaw(
+            law_obj = RelevantLaw(
                 section=section.section_number,
                 law_name=section.law_name,
                 law_type=getattr(section, "law_type", "primary"),
@@ -238,9 +338,24 @@ def retrieve_relevant_laws(query: str, abuse_category: str, language: str, top_k
                 reporting_guidance=section.reporting_guidance_si if language == "si" and getattr(section, "reporting_guidance_si", None) else section.reporting_guidance,
                 reporting_guidance_en=section.reporting_guidance,
                 reporting_guidance_si=getattr(section, "reporting_guidance_si", None),
-                relevance_score=round(float(score), 3)
-            ))
-        return results
+                relevance_score=round(float(score), 3),
+                related_provisions=[]
+            )
+            
+            group_id = SECTION_GROUPS.get(section.section_number)
+            if group_id:
+                if group_id not in seen_groups:
+                    seen_groups[group_id] = law_obj
+                    grouped_results.append(law_obj)
+                else:
+                    parent = seen_groups[group_id]
+                    if parent.related_provisions is None:
+                        parent.related_provisions = []
+                    parent.related_provisions.append(law_obj)
+            else:
+                grouped_results.append(law_obj)
+                
+        return grouped_results
     except Exception as e:
         print(f"Filtered search failed: {e}")
         return []

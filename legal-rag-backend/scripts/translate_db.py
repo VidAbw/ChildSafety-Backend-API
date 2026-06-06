@@ -48,14 +48,14 @@ def main():
     
     for i, section in enumerate(sections):
         # Fields to translate
-        title_en = section.get("title", "")
+        title_en = section.get("title") or ""
         # Try both simple_explanation_en and simple_explanation
-        exp_en = section.get("simple_explanation_en", section.get("simple_explanation", ""))
-        rep_en = section.get("reporting_guidance", "")
+        exp_en = section.get("simple_explanation_en") or section.get("simple_explanation") or ""
+        rep_en = section.get("reporting_guidance") or ""
         
-        title_si = section.get("title_si", "")
-        exp_si = section.get("simple_explanation_si", "")
-        rep_si = section.get("reporting_guidance_si", "")
+        title_si = section.get("title_si") or ""
+        exp_si = section.get("simple_explanation_si") or ""
+        rep_si = section.get("reporting_guidance_si") or ""
         
         need_save = False
         

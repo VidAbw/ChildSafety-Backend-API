@@ -19,6 +19,9 @@ class RelevantLaw(BaseModel):
     reporting_guidance_en: Optional[str] = None
     reporting_guidance_si: Optional[str] = None
     relevance_score: Optional[float] = None
+    related_provisions: Optional[List['RelevantLaw']] = []
+
+RelevantLaw.update_forward_refs()
 
 class RAGQueryResponse(BaseModel):
     detected_language: str
