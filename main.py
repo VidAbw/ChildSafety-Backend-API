@@ -2,6 +2,7 @@
 import logging
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from audio_guardian import router as audio_router
 from audio_guardian.listener import phone_audio_listener
 from nanny_cam_guardian import router as nanny_router
@@ -11,8 +12,6 @@ from nanny_cam_guardian import router as nanny_router
 logging.basicConfig(level=logging.INFO)
 
 app = FastAPI(title="Child Safety Guardian API")
-
-from fastapi.middleware.cors import CORSMiddleware
 
 app.add_middleware(
     CORSMiddleware,
@@ -38,6 +37,7 @@ async def startup_event() -> None:
 async def shutdown_event() -> None:
     await phone_audio_listener.stop()
 
+
 @app.get("/")
 def health_check():
     return {
@@ -46,6 +46,8 @@ def health_check():
         "audio_listener": phone_audio_listener.status(),
     }
 
+
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run(app, host="0.0.0.0", port=8000)

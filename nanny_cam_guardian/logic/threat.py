@@ -11,14 +11,18 @@ HAZARD_PROXIMITY_PX = 100       # hazard within this many pixels of child bbox �
 FALL_FRAME_THRESHOLD = 15       # consecutive frames with fall signal → Level 2 (was 30)
 FALL_ASPECT_RATIO = 1.15        # bbox width/height > this → person is lying horizontal
 FALL_DROP_VELOCITY = 180        # centroid Y px/s downward spike → sudden fall
-ABUSE_PROXIMITY_RATIO = 0.5     # adult centroid within 50% of frame height from child → Level 3
-ABUSE_VELOCITY_THRESHOLD = 300  # pixels/second wrist speed → Level 3 trigger
+ABUSE_PROXIMITY_RATIO = 0.5     # adult centroid within 50% of frame height from child → Level 4
+ABUSE_VELOCITY_THRESHOLD = 450  # pixels/second wrist speed → Level 4 gate (raised to reduce false positives)
+ABUSE_MIN_DIRECTION_SCORE = 0.45  # wrist must point at least 45% toward child
+ABUSE_MIN_PROBABILITY = 0.55    # minimum combined probability score to count a frame
+ABUSE_FRAME_THRESHOLD = 6       # consecutive qualifying frames before Level 4 fires
+UNKNOWN_PERSON_FRAME_THRESHOLD = 15   # consecutive frames an adult is unknown → Level 3
 
 
 @dataclass
 class ThreatEvent:
-    level: int          # 0=safe, 1=hazard, 2=fall, 3=abuse_suspected
-    type: str           # 'safe' | 'hazard' | 'fall' | 'abuse_suspected'
+    level: int          # 0=safe, 1=hazard, 2=fall, 3=unknown_person, 4=abuse_suspected
+    type: str           # 'safe' | 'hazard' | 'fall' | 'unknown_person' | 'abuse_suspected'
     probability: float
     details: dict = field(default_factory=dict)
 
@@ -57,6 +61,8 @@ def _direction_toward(
 class ThreatRuleEngine:
     def __init__(self):
         self._fall_counter: int = 0
+        self._abuse_counter: int = 0   # consecutive frames all abuse conditions were met
+        self._unknown_counter: int = 0 # consecutive frames an unknown adult was visible
         # Trackers keyed by person index (order in DetectionResult.persons list)
         self._trackers: dict[int, VelocityTracker] = {}
         # Centroid Y trackers for vertical drop detection (child fall)
@@ -79,6 +85,7 @@ class ThreatRuleEngine:
         frame_height: int,
         timestamp: float,
         frame_width: int = 640,
+        face_labels: dict[int, str] | None = None,   # person index → name or "unknown"
     ) -> ThreatEvent:
         persons = detection.persons
         hazards = detection.hazards
@@ -108,11 +115,17 @@ class ThreatRuleEngine:
                     tracker.update((px, py), timestamp)
 
         # ── Level 3: Abuse suspected ───────────────────────────────────────
+        # All four gates must be satisfied for ABUSE_FRAME_THRESHOLD consecutive
+        # frames before triggering. Single-frame velocity spikes from pose jitter
+        # reset the counter immediately.
+        abuse_condition_met = False
+        best_probability = 0.0
+        best_details: dict = {}
+
         if adults and children:
             for idx, person in enumerate(persons):
                 if person.is_child:
                     continue
-                adult = person
                 tracker = self._get_tracker(idx)
                 velocity = tracker.get_velocity()
 
@@ -120,13 +133,17 @@ class ThreatRuleEngine:
                     continue
 
                 for child in children:
-                    dist = _centroid_distance(adult, child)
+                    dist = _centroid_distance(person, child)
                     if dist > ABUSE_PROXIMITY_RATIO * frame_height:
                         continue
 
-                    # All three conditions met — calculate probability
                     direction = tracker.get_direction_vector()
-                    direction_score = _direction_toward(direction, adult.centroid, child.centroid)
+                    direction_score = _direction_toward(direction, person.centroid, child.centroid)
+
+                    # Gate: wrist must be pointing toward the child
+                    if direction_score < ABUSE_MIN_DIRECTION_SCORE:
+                        continue
+
                     max_dist = ABUSE_PROXIMITY_RATIO * frame_height
                     proximity_score = max(0.0, 1.0 - dist / max_dist)
                     max_v = ABUSE_VELOCITY_THRESHOLD * 3
@@ -137,17 +154,33 @@ class ThreatRuleEngine:
                         velocity_score * 0.5 + proximity_score * 0.3 + direction_score * 0.2,
                     )
 
-                    self._fall_counter = 0
-                    return ThreatEvent(
-                        level=3,
-                        type="abuse_suspected",
-                        probability=round(probability, 3),
-                        details={
+                    # Gate: combined probability must exceed minimum
+                    if probability < ABUSE_MIN_PROBABILITY:
+                        continue
+
+                    abuse_condition_met = True
+                    if probability > best_probability:
+                        best_probability = probability
+                        best_details = {
                             "adult_hand_velocity": round(velocity, 2),
                             "skeleton_distance": round(dist, 2),
+                            "direction_score": round(direction_score, 2),
                             "triggered_by": ["proximity", "velocity", "direction"],
-                        },
-                    )
+                        }
+
+        if abuse_condition_met:
+            self._abuse_counter += 1
+        else:
+            self._abuse_counter = 0   # any frame without all conditions resets
+
+        if self._abuse_counter >= ABUSE_FRAME_THRESHOLD:
+            self._fall_counter = 0
+            return ThreatEvent(
+                level=4,
+                type="abuse_suspected",
+                probability=round(best_probability, 3),
+                details=best_details,
+            )
 
         # ── Level 2: Fall detected ─────────────────────────────────────────
         # Three signals — any ONE is enough to increment the counter:
@@ -206,6 +239,33 @@ class ThreatRuleEngine:
                     },
                 )
 
+        # ── Level 3: Unknown person (face not in known_faces/) ────────────
+        unknown_adults = []
+        if face_labels:
+            for idx, person in enumerate(persons):
+                if person.is_child:
+                    continue
+                label = face_labels.get(idx, "unknown")
+                if label == "unknown":
+                    unknown_adults.append(idx)
+
+        if unknown_adults:
+            self._unknown_counter += 1
+        else:
+            self._unknown_counter = 0
+
+        if self._unknown_counter >= UNKNOWN_PERSON_FRAME_THRESHOLD:
+            return ThreatEvent(
+                level=3,
+                type="unknown_person",
+                probability=1.0,
+                details={
+                    "triggered_by": ["face_unrecognised"],
+                    "unknown_count": len(unknown_adults),
+                    "frames_seen": self._unknown_counter,
+                },
+            )
+
         # ── Level 1: Hazard near child ──────────────────────────────────────
         if hazards and children:
             for hazard in hazards:
@@ -228,5 +288,7 @@ class ThreatRuleEngine:
 
         # ── Level 0: Safe ──────────────────────────────────────────────────
         self._fall_counter = 0
+        self._abuse_counter = 0
+        self._unknown_counter = 0
         self._centroid_trackers.clear()
         return ThreatEvent(level=0, type="safe", probability=0.0)

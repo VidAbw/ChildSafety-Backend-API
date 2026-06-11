@@ -12,6 +12,7 @@ import time
 
 import cv2
 import numpy as np
+import threading
 from dotenv import load_dotenv
 
 # Allow imports from project root when running this file directly
@@ -21,6 +22,7 @@ load_dotenv()
 
 from nanny_cam_guardian.detector.yolo import YOLODetector
 from nanny_cam_guardian.detector.pose import PoseEstimator
+from nanny_cam_guardian.detector.face import FaceRecognizer
 from nanny_cam_guardian.logic.threat import ThreatRuleEngine, ThreatEvent
 from nanny_cam_guardian.publisher.supabase_push import push_alert
 
@@ -38,7 +40,8 @@ LEVEL_STYLE = {
     0: ((50, 205, 50),  "SAFE"),
     1: ((0, 165, 255),  "HAZARD"),
     2: ((0, 100, 255),  "FALL DETECTED"),
-    3: ((0, 0, 220),    "ABUSE SUSPECTED"),
+    3: ((180, 0, 200),  "UNKNOWN PERSON"),
+    4: ((0, 0, 220),    "ABUSE SUSPECTED"),
 }
 
 # MediaPipe pose connections (pairs of landmark indices to draw as skeleton)
@@ -66,12 +69,24 @@ def _speed_colour(velocity: float, threshold: float = 300.0) -> tuple:
 
 
 def _draw_detections(frame: np.ndarray, detection, keypoints_map: dict,
-                     trackers: dict) -> None:
+                     trackers: dict, face_labels: dict | None = None) -> None:
     h, w = frame.shape[:2]
+    face_labels = face_labels or {}
 
     for idx, person in enumerate(detection.persons):
         colour = COLOUR_CHILD if person.is_child else COLOUR_ADULT
-        label  = "Child" if person.is_child else "Adult"
+        if person.is_child:
+            label = "Child"
+        else:
+            face_name = face_labels.get(idx)
+            if face_name and face_name != "unknown":
+                label = face_name.capitalize()
+                colour = (0, 200, 0)   # green = recognised
+            elif face_name == "unknown":
+                label = "Unknown"
+                colour = (180, 0, 200)  # purple = unknown adult
+            else:
+                label = "Adult"
         cv2.rectangle(frame, (int(person.x1), int(person.y1)),
                       (int(person.x2), int(person.y2)), colour, 2)
         cv2.putText(frame, f"{label} {person.confidence:.0%}",
@@ -137,12 +152,83 @@ def _draw_status_banner(frame: np.ndarray, event: ThreatEvent) -> None:
                 cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2)
 
 
+class NannyCamStreamer:
+    """Background thread to run the camera loop and yield JPEG frames for FastAPI streaming."""
+    def __init__(self):
+        self.cap = None
+        self.thread = None
+        self.running = False
+        self.latest_frame = None
+        self.lock = threading.Lock()
+
+        # We will lazy-initialize these when start() is called to avoid blocking the main API thread
+        self.yolo = None
+        self.pose = None
+        self.face = None
+        self.engine = None
+
+    def start(self):
+        if self.running: return
+        self.running = True
+        
+        # Initialize AI models on first start
+        if self.yolo is None:
+            self.yolo = YOLODetector()
+            self.pose = PoseEstimator()
+            self.face = FaceRecognizer()
+            self.engine = ThreatRuleEngine()
+
+        self.cap = cv2.VideoCapture(CAMERA_INDEX)
+        self.thread = threading.Thread(target=self._capture_loop, daemon=True)
+        self.thread.start()
+
+    def stop(self):
+        self.running = False
+        if self.thread:
+            self.thread.join(timeout=2.0)
+        if self.cap:
+            self.cap.release()
+            self.cap = None
+
+    def _capture_loop(self):
+        while self.running and self.cap and self.cap.isOpened():
+            ret, frame_bgr = self.cap.read()
+            if not ret:
+                time.sleep(0.1)
+                continue
+
+            timestamp = time.time()
+            frame_h = frame_bgr.shape[0]
+            frame_rgb = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2RGB)
+
+            detection = self.yolo.detect(frame_bgr)
+            all_kp = self.pose.extract_all(frame_rgb)
+            keypoints_map = self.pose.match_to_persons(all_kp, detection.persons, frame_bgr.shape[1], frame_h)
+            face_labels = self.face.identify(frame_bgr, detection.persons)
+            event = self.engine.evaluate(detection, keypoints_map, frame_h, timestamp, frame_width=frame_bgr.shape[1], face_labels=face_labels)
+
+            push_alert(event, USER_ID)
+
+            _draw_detections(frame_bgr, detection, keypoints_map, self.engine._trackers, face_labels)
+            _draw_status_banner(frame_bgr, event)
+
+            ret, buffer = cv2.imencode('.jpg', frame_bgr)
+            if ret:
+                with self.lock:
+                    self.latest_frame = buffer.tobytes()
+
+    def get_frame(self):
+        with self.lock:
+            return self.latest_frame
+
+
 def run():
     print(f"[capture] Starting camera {CAMERA_INDEX} for user '{USER_ID}' ...")
     print("[capture] Preview window open — press 'q' to quit.")
 
     yolo   = YOLODetector()
     pose   = PoseEstimator()
+    face   = FaceRecognizer()
     engine = ThreatRuleEngine()
 
     cap = cv2.VideoCapture(CAMERA_INDEX)
@@ -173,16 +259,20 @@ def run():
                 all_kp, detection.persons, frame_bgr.shape[1], frame_h
             )
 
+            # ── 3. Face recognition (adults only, throttled) ──────────────
+            face_labels = face.identify(frame_bgr, detection.persons)
 
-            # ── 3. Threat classification ──────────────────────────────────
+            # ── 4. Threat classification ──────────────────────────────────
             event = engine.evaluate(detection, keypoints_map, frame_h, timestamp,
-                                    frame_width=frame_bgr.shape[1])
+                                    frame_width=frame_bgr.shape[1],
+                                    face_labels=face_labels)
 
-            # ── 4. Push alert if actionable ───────────────────────────────
+            # ── 5. Push alert if actionable ───────────────────────────────
             push_alert(event, USER_ID)
 
-            # ── 5. Draw preview ───────────────────────────────────────────
-            _draw_detections(frame_bgr, detection, keypoints_map, engine._trackers)
+            # ── 6. Draw preview ───────────────────────────────────────────
+            _draw_detections(frame_bgr, detection, keypoints_map,
+                             engine._trackers, face_labels)
             _draw_status_banner(frame_bgr, event)
             cv2.imshow("Nanny Cam Guardian — MM-ODG", frame_bgr)
 

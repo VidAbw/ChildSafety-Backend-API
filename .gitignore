@@ -1,4 +1,5 @@
 venv/
+.venv/
 .env
 __pycache__/
 __pycache__/main.cpython-313.pyc
@@ -14,6 +15,15 @@ audio model training/TESS Toronto emotional speech set data/
 audio model training/Training_Data/
 audio model training/audio_speech_actors_01-24/
 
+# Training datasets and model artifacts
+nanny_cam_guardian/training/datasets/
+nanny_cam_guardian/known_faces/*.jpg
+nanny_cam_guardian/known_faces/*.jpeg
+nanny_cam_guardian/known_faces/*.png
+knife-dataset.zip
+nanny_cam_guardian/models/*.pt
+runs/
+
 # Exclude auto-generated or large audio files
 *.zip
 *.wav
@@ -25,4 +35,5 @@ audio_guardian_config.json
 
 # Exclude pycache globally
 */__pycache__/
+**/__pycache__/
 **/*.pyc
