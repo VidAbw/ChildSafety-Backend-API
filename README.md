@@ -5,7 +5,7 @@ Welcome to the **Child Safety Backend API**, the core intelligence engine poweri
 
 ## 🚀 Key Modules and Features
 
-This repository consists of several specialized modules developed across different branches all contributing to a comprehensive child safety solution:
+This repository consists of several specialized modules developed across different branches, all contributing to a comprehensive child safety solution:
 
 ### 1. Nanny Cam Guardian & Video Streaming
 *Branches: `thivina`, `integrated-to-frontend-(pp1)`*

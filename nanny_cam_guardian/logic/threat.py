@@ -8,15 +8,21 @@ from nanny_cam_guardian.logic.tracker import VelocityTracker
 
 # ── Thresholds ────────────────────────────────────────────────────────────────
 HAZARD_PROXIMITY_PX = 100       # hazard within this many pixels of child bbox → Level 1
-FALL_FRAME_THRESHOLD = 30       # consecutive frames nose below hips → Level 2
-ABUSE_PROXIMITY_RATIO = 0.5     # adult centroid within 50% of frame height from child → Level 3
-ABUSE_VELOCITY_THRESHOLD = 300  # pixels/second wrist speed → Level 3 trigger
+FALL_FRAME_THRESHOLD = 15       # consecutive frames with fall signal → Level 2 (was 30)
+FALL_ASPECT_RATIO = 1.15        # bbox width/height > this → person is lying horizontal
+FALL_DROP_VELOCITY = 180        # centroid Y px/s downward spike → sudden fall
+ABUSE_PROXIMITY_RATIO = 0.5     # adult centroid within 50% of frame height from child → Level 4
+ABUSE_VELOCITY_THRESHOLD = 450  # pixels/second wrist speed → Level 4 gate (raised to reduce false positives)
+ABUSE_MIN_DIRECTION_SCORE = 0.45  # wrist must point at least 45% toward child
+ABUSE_MIN_PROBABILITY = 0.55    # minimum combined probability score to count a frame
+ABUSE_FRAME_THRESHOLD = 6       # consecutive qualifying frames before Level 4 fires
+UNKNOWN_PERSON_FRAME_THRESHOLD = 15   # consecutive frames an adult is unknown → Level 3
 
 
 @dataclass
 class ThreatEvent:
-    level: int          # 0=safe, 1=hazard, 2=fall, 3=abuse_suspected
-    type: str           # 'safe' | 'hazard' | 'fall' | 'abuse_suspected'
+    level: int          # 0=safe, 1=hazard, 2=fall, 3=unknown_person, 4=abuse_suspected
+    type: str           # 'safe' | 'hazard' | 'fall' | 'unknown_person' | 'abuse_suspected'
     probability: float
     details: dict = field(default_factory=dict)
 
@@ -55,8 +61,17 @@ def _direction_toward(
 class ThreatRuleEngine:
     def __init__(self):
         self._fall_counter: int = 0
+        self._abuse_counter: int = 0   # consecutive frames all abuse conditions were met
+        self._unknown_counter: int = 0 # consecutive frames an unknown adult was visible
         # Trackers keyed by person index (order in DetectionResult.persons list)
         self._trackers: dict[int, VelocityTracker] = {}
+        # Centroid Y trackers for vertical drop detection (child fall)
+        self._centroid_trackers: dict[int, VelocityTracker] = {}
+
+    def _get_centroid_tracker(self, idx: int) -> VelocityTracker:
+        if idx not in self._centroid_trackers:
+            self._centroid_trackers[idx] = VelocityTracker()
+        return self._centroid_trackers[idx]
 
     def _get_tracker(self, idx: int) -> VelocityTracker:
         if idx not in self._trackers:
@@ -69,6 +84,8 @@ class ThreatRuleEngine:
         keypoints_map: dict[int, Keypoints],   # person index → Keypoints
         frame_height: int,
         timestamp: float,
+        frame_width: int = 640,
+        face_labels: dict[int, str] | None = None,   # person index → name or "unknown"
     ) -> ThreatEvent:
         persons = detection.persons
         hazards = detection.hazards
@@ -76,43 +93,57 @@ class ThreatRuleEngine:
         adults = [p for p in persons if not p.is_child]
 
         # ── Update velocity trackers for each person ───────────────────────
+        # Convert normalised crop coords → full-frame pixel coords so that
+        # velocity is in pixels/second relative to the full frame.
         for idx, person in enumerate(persons):
             kp = keypoints_map.get(idx)
             if kp and kp.is_valid():
                 tracker = self._get_tracker(idx)
-                # Use the wrist with higher visibility
                 lw = kp.get(LEFT_WRIST)
                 rw = kp.get(RIGHT_WRIST)
-                wrist = None
+                best = None
                 if lw and rw:
-                    wrist = lw[:2] if lw[2] >= rw[2] else rw[:2]
+                    best = lw if lw[2] >= rw[2] else rw
                 elif lw:
-                    wrist = lw[:2]
+                    best = lw
                 elif rw:
-                    wrist = rw[:2]
-                if wrist:
-                    tracker.update(wrist, timestamp)
+                    best = rw
+                if best:
+                    # Landmarks are now normalised to the full frame (0–1)
+                    px = best[0] * frame_width
+                    py = best[1] * frame_height
+                    tracker.update((px, py), timestamp)
 
         # ── Level 3: Abuse suspected ───────────────────────────────────────
+        # All four gates must be satisfied for ABUSE_FRAME_THRESHOLD consecutive
+        # frames before triggering. Single-frame velocity spikes from pose jitter
+        # reset the counter immediately.
+        abuse_condition_met = False
+        best_probability = 0.0
+        best_details: dict = {}
+
         if adults and children:
-            for adult_idx, adult in enumerate(
-                [p for i, p in enumerate(persons) if not p.is_child]
-            ):
-                adult_person_idx = [i for i, p in enumerate(persons) if not p.is_child][adult_idx]
-                tracker = self._get_tracker(adult_person_idx)
+            for idx, person in enumerate(persons):
+                if person.is_child:
+                    continue
+                tracker = self._get_tracker(idx)
                 velocity = tracker.get_velocity()
 
                 if velocity < ABUSE_VELOCITY_THRESHOLD:
                     continue
 
                 for child in children:
-                    dist = _centroid_distance(adult, child)
+                    dist = _centroid_distance(person, child)
                     if dist > ABUSE_PROXIMITY_RATIO * frame_height:
                         continue
 
-                    # All three conditions met — calculate probability
                     direction = tracker.get_direction_vector()
-                    direction_score = _direction_toward(direction, adult.centroid, child.centroid)
+                    direction_score = _direction_toward(direction, person.centroid, child.centroid)
+
+                    # Gate: wrist must be pointing toward the child
+                    if direction_score < ABUSE_MIN_DIRECTION_SCORE:
+                        continue
+
                     max_dist = ABUSE_PROXIMITY_RATIO * frame_height
                     proximity_score = max(0.0, 1.0 - dist / max_dist)
                     max_v = ABUSE_VELOCITY_THRESHOLD * 3
@@ -123,40 +154,117 @@ class ThreatRuleEngine:
                         velocity_score * 0.5 + proximity_score * 0.3 + direction_score * 0.2,
                     )
 
-                    self._fall_counter = 0
-                    return ThreatEvent(
-                        level=3,
-                        type="abuse_suspected",
-                        probability=round(probability, 3),
-                        details={
+                    # Gate: combined probability must exceed minimum
+                    if probability < ABUSE_MIN_PROBABILITY:
+                        continue
+
+                    abuse_condition_met = True
+                    if probability > best_probability:
+                        best_probability = probability
+                        best_details = {
                             "adult_hand_velocity": round(velocity, 2),
                             "skeleton_distance": round(dist, 2),
+                            "direction_score": round(direction_score, 2),
                             "triggered_by": ["proximity", "velocity", "direction"],
-                        },
-                    )
+                        }
+
+        if abuse_condition_met:
+            self._abuse_counter += 1
+        else:
+            self._abuse_counter = 0   # any frame without all conditions resets
+
+        if self._abuse_counter >= ABUSE_FRAME_THRESHOLD:
+            self._fall_counter = 0
+            return ThreatEvent(
+                level=4,
+                type="abuse_suspected",
+                probability=round(best_probability, 3),
+                details=best_details,
+            )
 
         # ── Level 2: Fall detected ─────────────────────────────────────────
-        for idx, child in enumerate(children):
-            kp = keypoints_map.get(idx)
-            if not kp or not kp.is_valid():
-                continue
-            nose = kp.get(NOSE)
-            lhip = kp.get(LEFT_HIP)
-            rhip = kp.get(RIGHT_HIP)
-            if nose and lhip and rhip:
-                hip_y = (lhip[1] + rhip[1]) / 2
-                if nose[1] > hip_y:   # normalised coords: larger y = lower on screen
-                    self._fall_counter += 1
-                else:
-                    self._fall_counter = 0
+        # Three signals — any ONE is enough to increment the counter:
+        #   1. Bounding box aspect ratio: width > height → person lying flat
+        #   2. Nose below hips in pose (classic fall posture)
+        #   3. Sudden downward centroid velocity spike
+        for child_list_idx, child in enumerate(children):
+            # Map back to the original persons-list index for keypoints_map
+            person_idx = persons.index(child)
+            kp = keypoints_map.get(person_idx)
 
-                if self._fall_counter >= FALL_FRAME_THRESHOLD:
-                    return ThreatEvent(
-                        level=2,
-                        type="fall",
-                        probability=1.0,
-                        details={"triggered_by": ["fall_pose"], "fall_frames": self._fall_counter},
-                    )
+            # ── Signal 1: aspect ratio ──────────────────────────────────────
+            aspect_ratio = child.width / child.height if child.height > 0 else 0
+            is_horizontal = aspect_ratio > FALL_ASPECT_RATIO
+
+            # ── Signal 2: nose below hips ───────────────────────────────────
+            nose_below_hips = False
+            if kp and kp.is_valid():
+                nose = kp.get(NOSE)
+                lhip = kp.get(LEFT_HIP)
+                rhip = kp.get(RIGHT_HIP)
+                if nose and lhip and rhip:
+                    hip_y = (lhip[1] + rhip[1]) / 2
+                    nose_below_hips = nose[1] > hip_y
+
+            # ── Signal 3: sudden vertical drop ─────────────────────────────
+            _, cy = child.centroid
+            ct = self._get_centroid_tracker(child_list_idx)
+            ct.update((0.0, cy * frame_height), timestamp)   # track Y in pixels
+            drop_velocity = ct.get_velocity()
+            is_dropping = drop_velocity > FALL_DROP_VELOCITY
+
+            triggered = []
+            if is_horizontal:
+                triggered.append("horizontal_bbox")
+            if nose_below_hips:
+                triggered.append("nose_below_hips")
+            if is_dropping:
+                triggered.append("vertical_drop")
+
+            if triggered:
+                self._fall_counter += 1
+            else:
+                self._fall_counter = 0
+
+            if self._fall_counter >= FALL_FRAME_THRESHOLD:
+                return ThreatEvent(
+                    level=2,
+                    type="fall",
+                    probability=1.0,
+                    details={
+                        "triggered_by": triggered,
+                        "fall_frames": self._fall_counter,
+                        "aspect_ratio": round(aspect_ratio, 2),
+                        "drop_velocity_px_s": round(drop_velocity, 1),
+                    },
+                )
+
+        # ── Level 3: Unknown person (face not in known_faces/) ────────────
+        unknown_adults = []
+        if face_labels:
+            for idx, person in enumerate(persons):
+                if person.is_child:
+                    continue
+                label = face_labels.get(idx, "unknown")
+                if label == "unknown":
+                    unknown_adults.append(idx)
+
+        if unknown_adults:
+            self._unknown_counter += 1
+        else:
+            self._unknown_counter = 0
+
+        if self._unknown_counter >= UNKNOWN_PERSON_FRAME_THRESHOLD:
+            return ThreatEvent(
+                level=3,
+                type="unknown_person",
+                probability=1.0,
+                details={
+                    "triggered_by": ["face_unrecognised"],
+                    "unknown_count": len(unknown_adults),
+                    "frames_seen": self._unknown_counter,
+                },
+            )
 
         # ── Level 1: Hazard near child ──────────────────────────────────────
         if hazards and children:
@@ -180,4 +288,7 @@ class ThreatRuleEngine:
 
         # ── Level 0: Safe ──────────────────────────────────────────────────
         self._fall_counter = 0
+        self._abuse_counter = 0
+        self._unknown_counter = 0
+        self._centroid_trackers.clear()
         return ThreatEvent(level=0, type="safe", probability=0.0)
