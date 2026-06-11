@@ -1,0 +1,18 @@
+[
+    {
+        "id": 1,
+        "section": "308A",
+        "title": "Cruelty to Children",
+        "description": "Wilful cruelty to a person under 18 years of age, causing physical or mental suffering.",
+        "punishment": "Imprisonment up to 2-10 years and a fine.",
+        "category": "Physical Abuse"
+    },
+    {
+        "id": 2,
+        "section": "360A",
+        "title": "Kidnapping",
+        "description": "Removing a child from the custody of their legal guardian without consent.",
+        "punishment": "Rigorous imprisonment and fine.",
+        "category": "Abduction"
+    }
+]

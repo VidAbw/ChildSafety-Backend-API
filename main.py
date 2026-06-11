@@ -1,16 +1,21 @@
 # main.py
+import logging
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from audio_guardian import router as audio_router
+from audio_guardian.listener import phone_audio_listener
 from nanny_cam_guardian import router as nanny_router
-# from audio_guardian import router as audio_router      # Member 2 — Audio Guardian
 # from chat_counselor import router as chat_router       # Member 3 — AI Counselor
 # from game import router as game_router                 # Member 4 — S-ALS Game
+
+logging.basicConfig(level=logging.INFO)
 
 app = FastAPI(title="Child Safety Guardian API")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["*"],  # Allow frontend origin, e.g. http://localhost:8081
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -18,14 +23,31 @@ app.add_middleware(
 
 # Connect the routers
 app.include_router(nanny_router.router, prefix="/api/iot", tags=["Nanny Cam Guardian (MM-ODG)"])
-# app.include_router(audio_router.router, prefix="/api/audio", tags=["Audio Guardian"])
+app.include_router(audio_router, prefix="/api/audio", tags=["Audio Guardian"])
 # app.include_router(chat_router.router, prefix="/api/chat", tags=["AI Counselor"])
 # app.include_router(game_router.router, prefix="/api/game", tags=["S-ALS Game"])
 
+
+@app.on_event("startup")
+async def startup_event() -> None:
+    await phone_audio_listener.start()
+
+
+@app.on_event("shutdown")
+async def shutdown_event() -> None:
+    await phone_audio_listener.stop()
+
+
 @app.get("/")
 def health_check():
-    return {"status": "online", "message": "Backend is running!"}
+    return {
+        "status": "online",
+        "message": "Backend is running",
+        "audio_listener": phone_audio_listener.status(),
+    }
+
 
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run(app, host="0.0.0.0", port=8000)
