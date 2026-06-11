@@ -1,3 +1,4 @@
+@ -0,0 +1,52 @@
 # Child Safety Ecosystem - Backend API
 
 Welcome to the **Child Safety Backend API**, the core intelligence engine powering the Child Safety Ecosystem. This FastAPI-based backend processes live video and audio streams, applies advanced AI models for threat detection, and provides an NLP-powered legal guidance system.
