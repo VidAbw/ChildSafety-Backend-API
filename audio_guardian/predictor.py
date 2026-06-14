@@ -124,7 +124,7 @@ class ThreatPredictor:
                 
                 prob_threat = probabilities[0][1].item()
                 
-            return prob_threat
+            return (1 if prob_threat >= 0.5 else 0, prob_threat)
             
         except Exception as e:
             logger.error(f"Error during prediction: {e}")

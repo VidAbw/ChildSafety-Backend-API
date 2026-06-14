@@ -1,9 +1,10 @@
 @echo off
 echo Starting Legal RAG Backend...
-cd /d "%~dp0legal-rag-backend"
+cd /d "%~dp0"
 if not exist venv (
-    echo Error: Virtual environment (venv) not found. Please run setup first.
+    echo Error: Virtual environment (venv) not found at root. Please run setup first.
     pause
     exit /b 1
 )
-venv\Scripts\python.exe -m uvicorn app.main:app --reload
+cd legal-rag-backend
+..\venv\Scripts\python.exe -m uvicorn app.main:app --reload

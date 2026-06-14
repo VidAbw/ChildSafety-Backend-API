@@ -21,7 +21,10 @@ class RelevantLaw(BaseModel):
     relevance_score: Optional[float] = None
     related_provisions: Optional[List['RelevantLaw']] = []
 
-RelevantLaw.update_forward_refs()
+try:
+    RelevantLaw.model_rebuild()
+except AttributeError:
+    RelevantLaw.update_forward_refs()
 
 class RAGQueryResponse(BaseModel):
     detected_language: str
