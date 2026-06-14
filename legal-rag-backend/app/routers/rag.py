@@ -1,3 +1,4 @@
+# pyrefly: ignore [missing-import]
 from fastapi import APIRouter, HTTPException
 from typing import List
 from app.schemas.legal_schema import LegalSection
