@@ -37,3 +37,14 @@ audio_guardian_config.json
 */__pycache__/
 **/__pycache__/
 **/*.pyc
+
+# Ignore Python bytecode and cache folders
+__pycache__/
+*.pyc
+
+# Ignore local environment variables
+.env
+legal-rag-backend/.env
+
+# Ignore local FAISS index files
+*.faiss
