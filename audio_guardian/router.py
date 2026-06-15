@@ -79,7 +79,7 @@ def get_audio_listener_status() -> dict:
         "backend": "online",
         "parent_name": config.get("parent_name", "Not registered"),
         "registered_profiles": profile_count,
-        "ws_listener": phone_audio_listener.status(),
+        "ws_listener": {"disabled": True, "message": "Phone audio listener has been disabled."},
     }
 
 
@@ -115,19 +115,17 @@ def register_next_chunk_status() -> dict:
 
 @router.post("/start")
 async def start_audio_listener() -> dict:
-    await phone_audio_listener.start()
     return {
-        "message": "Audio listener start requested.",
-        "status": phone_audio_listener.status(),
+        "message": "Phone audio listener is disabled.",
+        "status": {"disabled": True},
     }
 
 
 @router.post("/stop")
 async def stop_audio_listener() -> dict:
-    await phone_audio_listener.stop()
     return {
-        "message": "Audio listener stopped.",
-        "status": phone_audio_listener.status(),
+        "message": "Phone audio listener is disabled.",
+        "status": {"disabled": True},
     }
 
 

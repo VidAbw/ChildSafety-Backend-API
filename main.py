@@ -4,7 +4,6 @@ import logging
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from audio_guardian import router as audio_router
-from audio_guardian.listener import phone_audio_listener
 from nanny_cam_guardian import router as nanny_router
 # from chat_counselor import router as chat_router       # Member 3 — AI Counselor
 # from game import router as game_router                 # Member 4 — S-ALS Game
@@ -28,14 +27,7 @@ app.include_router(audio_router, prefix="/api/audio", tags=["Audio Guardian"])
 # app.include_router(game_router.router, prefix="/api/game", tags=["S-ALS Game"])
 
 
-@app.on_event("startup")
-async def startup_event() -> None:
-    await phone_audio_listener.start()
 
-
-@app.on_event("shutdown")
-async def shutdown_event() -> None:
-    await phone_audio_listener.stop()
 
 
 @app.get("/")
@@ -43,7 +35,6 @@ def health_check():
     return {
         "status": "online",
         "message": "Backend is running",
-        "audio_listener": phone_audio_listener.status(),
     }
 
 
