@@ -1,9 +1,13 @@
 # routers/iot.py
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, UploadFile, File, Form
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 import time
+import shutil
+from pathlib import Path
 from nanny_cam_guardian.detector.capture import NannyCamStreamer
+
+KNOWN_FACES_DIR = Path(__file__).resolve().parent / "known_faces"
 
 streamer = NannyCamStreamer()
 from core.supabase import db
@@ -69,3 +73,54 @@ def stream_camera():
     transparent_pixel = b'\x47\x49\x46\x38\x39\x61\x01\x00\x01\x00\x80\x00\x00\xff\xff\xff\x00\x00\x00\x21\xf9\x04\x01\x00\x00\x00\x00\x2c\x00\x00\x00\x00\x01\x00\x01\x00\x00\x02\x02\x44\x01\x00\x3b'
     return Response(content=transparent_pixel, media_type="image/gif", headers=headers)
 
+@router.post("/upload-face")
+def upload_known_face(name: str = Form(...), file: UploadFile = File(...)):
+    KNOWN_FACES_DIR.mkdir(parents=True, exist_ok=True)
+    
+    # Sanitize the name so we don't save dangerous filenames
+    safe_name = "".join(c for c in name if c.isalnum() or c in " _-").strip()
+    if not safe_name:
+        raise HTTPException(status_code=400, detail="Invalid name provided")
+        
+    ext = Path(file.filename).suffix or ".jpg"
+    file_path = KNOWN_FACES_DIR / f"{safe_name}{ext}"
+    
+    try:
+        with open(file_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Could not save file: {e}")
+        
+    return {"status": "success", "message": f"Successfully uploaded face for {safe_name}"}
+
+@router.get("/known-faces")
+def get_known_faces():
+    if not KNOWN_FACES_DIR.exists():
+        return {"faces": []}
+    
+    faces = []
+    for f in KNOWN_FACES_DIR.iterdir():
+        if f.is_file() and f.suffix.lower() in [".jpg", ".jpeg", ".png", ".webp"]:
+            faces.append(f.stem)
+            
+    return {"faces": faces}
+
+@router.delete("/known-face/{name}")
+def delete_known_face(name: str):
+    if not KNOWN_FACES_DIR.exists():
+        raise HTTPException(status_code=404, detail="Directory not found")
+        
+    safe_name = "".join(c for c in name if c.isalnum() or c in " _-").strip()
+    
+    deleted = False
+    for f in KNOWN_FACES_DIR.glob(f"{safe_name}.*"):
+        try:
+            f.unlink()
+            deleted = True
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Failed to delete {f.name}: {str(e)}")
+            
+    if not deleted:
+        raise HTTPException(status_code=404, detail=f"Face for {safe_name} not found")
+        
+    return {"status": "success", "message": f"Successfully deleted {safe_name}"}
