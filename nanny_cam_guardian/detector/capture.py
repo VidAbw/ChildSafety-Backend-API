@@ -13,6 +13,7 @@ import time
 import cv2
 import numpy as np
 import threading
+from concurrent.futures import ThreadPoolExecutor
 from dotenv import load_dotenv
 
 # Allow imports from project root when running this file directly
@@ -167,6 +168,14 @@ class NannyCamStreamer:
         self.face = None
         self.engine = None
 
+        # Alerts are pushed on a background thread so a slow Supabase insert
+        # never stalls frame capture/streaming.
+        self._alert_executor = ThreadPoolExecutor(max_workers=1)
+        # (level, type) of the last alert pushed — reset to None on a safe
+        # frame so only state *transitions* get pushed, not every frame a
+        # sustained threat continues to hold.
+        self._last_alert_key = None
+
     def start(self):
         if self.running: return
         self.running = True
@@ -189,6 +198,7 @@ class NannyCamStreamer:
         if self.cap:
             self.cap.release()
             self.cap = None
+        self._last_alert_key = None
 
     def _capture_loop(self):
         while self.running and self.cap and self.cap.isOpened():
@@ -207,7 +217,13 @@ class NannyCamStreamer:
             face_labels = self.face.identify(frame_bgr, detection.persons)
             event = self.engine.evaluate(detection, keypoints_map, frame_h, timestamp, frame_width=frame_bgr.shape[1], face_labels=face_labels)
 
-            push_alert(event, USER_ID)
+            if event.level == 0:
+                self._last_alert_key = None
+            else:
+                alert_key = (event.level, event.type)
+                if alert_key != self._last_alert_key:
+                    self._last_alert_key = alert_key
+                    self._alert_executor.submit(push_alert, event, USER_ID)
 
             _draw_detections(frame_bgr, detection, keypoints_map, self.engine._trackers, face_labels)
             _draw_status_banner(frame_bgr, event)
@@ -237,6 +253,7 @@ def run():
         return
 
     frame_h = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    last_alert_key = None
 
     try:
         while True:
@@ -267,8 +284,14 @@ def run():
                                     frame_width=frame_bgr.shape[1],
                                     face_labels=face_labels)
 
-            # ── 5. Push alert if actionable ───────────────────────────────
-            push_alert(event, USER_ID)
+            # ── 5. Push alert if actionable (debounced, off the main thread) ──
+            if event.level == 0:
+                last_alert_key = None
+            else:
+                alert_key = (event.level, event.type)
+                if alert_key != last_alert_key:
+                    last_alert_key = alert_key
+                    threading.Thread(target=push_alert, args=(event, USER_ID), daemon=True).start()
 
             # ── 6. Draw preview ───────────────────────────────────────────
             _draw_detections(frame_bgr, detection, keypoints_map,
