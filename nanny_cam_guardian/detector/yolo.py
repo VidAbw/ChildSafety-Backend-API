@@ -13,7 +13,9 @@ HEIGHT_MEMORY_FRAMES = 90     # frames to remember each person's max height (~3s
 # it is loaded and used for hazards while stock yolov8s handles persons.
 MODELS_DIR = os.path.join(os.path.dirname(__file__), "..", "models")
 HAZARD_MODEL_PATH = os.path.join(MODELS_DIR, "hazard_yolo.pt")
-HAZARD_CONF_THRESHOLD = 0.35  # confidence floor for the specialist model
+HAZARD_CONF_THRESHOLD = 0.35   # confidence floor for the specialist model
+STOCK_HAZARD_CONF_THRESHOLD = 0.55  # higher floor for the generic stock model, which
+                                     # misclassifies pens/sticks as knives at low confidence
 
 
 @dataclass
@@ -150,7 +152,8 @@ class YOLODetector:
                 persons.append(PersonBox(x1, y1, x2, y2, confidence=conf))
             elif label in HAZARD_CLASSES and self.hazard_model is None:
                 # Only use stock model for hazards when no specialist exists
-                hazards.append(HazardBox(x1, y1, x2, y2, label=label, confidence=conf))
+                if conf >= STOCK_HAZARD_CONF_THRESHOLD:
+                    hazards.append(HazardBox(x1, y1, x2, y2, label=label, confidence=conf))
 
         # Specialist hazard pass — fine-tuned model is far better at distance
         if self.hazard_model is not None:

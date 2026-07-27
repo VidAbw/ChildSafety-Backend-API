@@ -17,6 +17,7 @@ ABUSE_MIN_DIRECTION_SCORE = 0.45  # wrist must point at least 45% toward child
 ABUSE_MIN_PROBABILITY = 0.55    # minimum combined probability score to count a frame
 ABUSE_FRAME_THRESHOLD = 6       # consecutive qualifying frames before Level 4 fires
 UNKNOWN_PERSON_FRAME_THRESHOLD = 15   # consecutive frames an adult is unknown → Level 3
+HAZARD_FRAME_THRESHOLD = 5      # consecutive frames a hazard is near a child → Level 1
 
 
 @dataclass
@@ -63,6 +64,7 @@ class ThreatRuleEngine:
         self._fall_counter: int = 0
         self._abuse_counter: int = 0   # consecutive frames all abuse conditions were met
         self._unknown_counter: int = 0 # consecutive frames an unknown adult was visible
+        self._hazard_counter: int = 0  # consecutive frames a hazard was near a child
         # Trackers keyed by person index (order in DetectionResult.persons list)
         self._trackers: dict[int, VelocityTracker] = {}
         # Centroid Y trackers for vertical drop detection (child fall)
@@ -267,6 +269,9 @@ class ThreatRuleEngine:
             )
 
         # ── Level 1: Hazard near child ──────────────────────────────────────
+        # Requires HAZARD_FRAME_THRESHOLD consecutive frames so a single
+        # misclassified frame (e.g. a pen mistaken for a knife) can't trigger.
+        hazard_hit = None
         if hazards and children:
             for hazard in hazards:
                 for child in children:
@@ -275,20 +280,34 @@ class ThreatRuleEngine:
                         child.x1, child.y1, child.x2, child.y2,
                     )
                     if dist <= HAZARD_PROXIMITY_PX:
-                        return ThreatEvent(
-                            level=1,
-                            type="hazard",
-                            probability=1.0,
-                            details={
-                                "hazard_object": hazard.label,
-                                "distance_px": round(dist, 1),
-                                "triggered_by": ["hazard_proximity"],
-                            },
-                        )
+                        hazard_hit = (hazard, dist)
+                        break
+                if hazard_hit:
+                    break
+
+        if hazard_hit:
+            self._hazard_counter += 1
+        else:
+            self._hazard_counter = 0
+
+        if self._hazard_counter >= HAZARD_FRAME_THRESHOLD:
+            hazard, dist = hazard_hit
+            return ThreatEvent(
+                level=1,
+                type="hazard",
+                probability=1.0,
+                details={
+                    "hazard_object": hazard.label,
+                    "distance_px": round(dist, 1),
+                    "triggered_by": ["hazard_proximity"],
+                    "hazard_frames": self._hazard_counter,
+                },
+            )
 
         # ── Level 0: Safe ──────────────────────────────────────────────────
-        self._fall_counter = 0
-        self._abuse_counter = 0
-        self._unknown_counter = 0
-        self._centroid_trackers.clear()
+        # Note: none of the sustain counters are reset here. Each is already
+        # correctly maintained above (incremented when its condition is met,
+        # reset to 0 otherwise) — resetting them again here would wipe any
+        # counter still mid-sustain (below its threshold) every single frame,
+        # making it impossible for level 2/3/4 to ever accumulate past 1.
         return ThreatEvent(level=0, type="safe", probability=0.0)
