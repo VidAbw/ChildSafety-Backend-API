@@ -17,16 +17,45 @@ logger = logging.getLogger(__name__)
 
 # Constants (Must match training script)
 N_MFCC = 40
+N_CHANNELS = 120   # 40 MFCC + 40 Delta + 40 Delta2
 MAX_LEN = 150
 # Use a relative path so it works on any computer
 MODEL_PATH = Path(__file__).parent.parent / "audio model training" / "audio_threat_model.pth"
 # Local fallback WAV (kept for backward compatibility)
 LOCAL_PROFILE_PATH = Path("parent_profile.wav")
 
+def extract_features(y: np.ndarray, sr: int = 22050) -> np.ndarray:
+    """
+    Extracts a 120-channel feature matrix:
+    - 40 Base MFCCs
+    - 40 First-order Delta velocity coefficients
+    - 40 Second-order Delta-Delta acceleration coefficients
+    Performs per-sample Z-score standardization and pads/truncates to MAX_LEN=150.
+    Returns shape: (120, MAX_LEN).
+    """
+    mfcc = librosa.feature.mfcc(y=y, sr=sr, n_mfcc=N_MFCC)
+    delta_mfcc = librosa.feature.delta(mfcc)
+    delta2_mfcc = librosa.feature.delta(mfcc, order=2)
+
+    features = np.vstack([mfcc, delta_mfcc, delta2_mfcc])
+
+    # Per-sample Z-score standardization
+    features = (features - np.mean(features)) / (np.std(features) + 1e-6)
+
+    # Pad or truncate to MAX_LEN (150)
+    if features.shape[1] < MAX_LEN:
+        pad_width = MAX_LEN - features.shape[1]
+        features = np.pad(features, pad_width=((0, 0), (0, pad_width)), mode='constant')
+    else:
+        features = features[:, :MAX_LEN]
+
+    return features.astype(np.float32)
+
+
 class AudioThreatNet(nn.Module):
-    def __init__(self):
+    def __init__(self, in_channels: int = N_CHANNELS):
         super(AudioThreatNet, self).__init__()
-        self.conv1 = nn.Conv1d(in_channels=N_MFCC, out_channels=64, kernel_size=3, padding=1)
+        self.conv1 = nn.Conv1d(in_channels=in_channels, out_channels=64, kernel_size=3, padding=1)
         self.relu = nn.ReLU()
         self.pool = nn.MaxPool1d(kernel_size=2)
         self.conv2 = nn.Conv1d(in_channels=64, out_channels=128, kernel_size=3, padding=1)
@@ -46,10 +75,11 @@ class AudioThreatNet(nn.Module):
         out = self.fc(out)
         return out
 
+
 class ThreatPredictor:
     def __init__(self):
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self.model = AudioThreatNet().to(self.device)
+        self.model = AudioThreatNet(in_channels=N_CHANNELS).to(self.device)
         self.is_loaded = False
         
         self.load_model()
@@ -68,7 +98,7 @@ class ThreatPredictor:
 
     def extract_mfcc_matrix(self, wav_bytes: bytes, n_mfcc: int = 20) -> Optional[np.ndarray]:
         """
-        Extracts an MFCC matrix from raw audio bytes.
+        Extracts an MFCC matrix from raw audio bytes for DTW voice matching.
         Supports WAV and WebM (from browser) via librosa + audioread fallback.
         Returns a 2D numpy array of shape (n_mfcc, T) or None on failure.
         """
@@ -97,7 +127,7 @@ class ThreatPredictor:
 
     def predict_from_wav_bytes(self, wav_bytes: bytes) -> tuple[int, float]:
         """
-        Takes raw WAV bytes, extracts MFCCs, and runs inference.
+        Takes raw WAV bytes, extracts 120-channel features, and runs inference.
         Returns (Class_ID, Probability)
         Class_ID: 0 = Safe, 1 = Threat
         """
@@ -108,18 +138,11 @@ class ThreatPredictor:
             wav_io = io.BytesIO(wav_bytes)
             y, sr = librosa.load(wav_io, sr=22050, duration=3.0)
             
-            mfcc = librosa.feature.mfcc(y=y, sr=sr, n_mfcc=N_MFCC)
-            
-            if mfcc.shape[1] < MAX_LEN:
-                pad_width = MAX_LEN - mfcc.shape[1]
-                mfcc = np.pad(mfcc, pad_width=((0, 0), (0, pad_width)), mode='constant')
-            else:
-                mfcc = mfcc[:, :MAX_LEN]
-                
-            tensor_mfcc = torch.tensor(mfcc, dtype=torch.float32).unsqueeze(0).to(self.device)
+            features = extract_features(y, sr)
+            tensor_features = torch.tensor(features, dtype=torch.float32).unsqueeze(0).to(self.device)
             
             with torch.no_grad():
-                outputs = self.model(tensor_mfcc)
+                outputs = self.model(tensor_features)
                 probabilities = torch.softmax(outputs, dim=1)
                 
                 prob_threat = probabilities[0][1].item()
