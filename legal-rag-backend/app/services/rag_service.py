@@ -194,57 +194,52 @@ def get_section_role(title: str, simple_explanation: str) -> str:
 def retrieve_relevant_laws(query: str, abuse_category: str, language: str, top_k: int = 3) -> List[RelevantLaw]:
     sections = load_legal_sections()
     
+    # Normalize category names to the standard 6 categories
+    category_normalization = {
+        "trafficking_exploitation": "trafficking",
+        "psychological_trauma_counseling_need": "emotional_abuse"
+    }
+    norm_category = category_normalization.get(abuse_category.lower(), abuse_category.lower())
+    
     # Define category map for soft boosting
     category_map = {
         "sexual_abuse": ["sexual", "rape", "incest", "prostitution", "csam", "exploitation", "obscene", "assault", "harassment", "child sexual"],
         "physical_abuse": ["physical", "cruelty", "hurt", "assault", "beating", "hitting", "injury", "maltreatment", "neglect", "grievous"],
         "neglect": ["neglect", "abandonment", "exposure", "care", "without", "left alone"],
-        "trafficking_exploitation": ["traffic", "kidnap", "abduction", "exploitation", "slavery", "bondage", "procurer", "transport", "sold", "buying", "selling"],
-        "emotional_abuse": ["emotional", "mental", "trauma", "cruelty", "shouting", "insulting", "bullying", "suffering", "harassment"],
-        "psychological_trauma_counseling_need": ["mental", "trauma", "counseling", "therapy", "psychologist", "emotional", "suffering", "harassment"],
+        "trafficking": ["traffic", "kidnap", "abduction", "exploitation", "slavery", "bondage", "procurer", "transport", "sold", "buying", "selling"],
+        "emotional_abuse": ["emotional", "mental", "trauma", "cruelty", "shouting", "insulting", "bullying", "suffering", "harassment", "counseling", "therapy"],
         "general_child_protection": []
     }
     
-    target_keywords = category_map.get(abuse_category, [])
+    target_keywords = category_map.get(norm_category, [])
     
     # Coarse-grained category routing to map predicted category to allowed DB categories
     CATEGORY_ROUTING = {
-        "sexual_abuse": [
-            "sexual abuse", "child sexual exploitation", "digital child abuse", 
-            "victim privacy protection", "general abuse", "child abuse reporting duty", 
-            "sexual abuse and harassment", "sexual exploitation", "child soliciting"
-        ],
-        "physical_abuse": [
-            "physical abuse", "child physical abuse and neglect", "child neglect", 
-            "child abuse reporting duty", "general abuse", "concealment related offence",
-            "aggravated physical abuse", "serious physical abuse", "serious aggravated physical abuse", 
-            "coercive physical abuse"
-        ],
-        "neglect": [
-            "child neglect", "child physical abuse and neglect", "general abuse", 
-            "child abuse reporting duty", "concealment related offence"
-        ],
-        "trafficking_exploitation": [
-            "child exploitation", "general abuse", "child abuse reporting duty",
-            "kidnapping and abduction", "kidnapping and serious violence", 
-            "severe exploitation", "trafficking and severe exploitation", "adoption related offence"
-        ],
-        "emotional_abuse": [
-            "child physical abuse and neglect", "general abuse", "victim privacy protection"
-        ],
-        "psychological_trauma_counseling_need": [
-            "general abuse"
-        ],
-        "general_child_protection": []  # Allows all categories
+        "sexual_abuse": ["sexual_abuse", "general_child_protection"],
+        "physical_abuse": ["physical_abuse", "neglect", "general_child_protection"],
+        "neglect": ["neglect", "physical_abuse", "general_child_protection"],
+        "trafficking": ["trafficking", "general_child_protection"],
+        "emotional_abuse": ["emotional_abuse", "general_child_protection"],
+        "general_child_protection": ["physical_abuse", "sexual_abuse", "emotional_abuse", "neglect", "trafficking", "general_child_protection"]
     }
 
-    allowed_categories = CATEGORY_ROUTING.get(abuse_category, [])
+    # Strict section mapping for strict category-based filtering
+    ALLOWED_SECTIONS = {
+        "physical_abuse": ["308", "308A", "310", "311", "312", "313", "314", "315", "316", "317", "318", "33", "39", "286C"],
+        "sexual_abuse": ["345", "363", "364", "364A", "365", "365A", "365B", "365C", "286A", "286B", "288A", "357", "358", "360A", "360B", "360E", "33", "39", "286C"],
+        "neglect": ["308", "308A", "33", "39", "286C"],
+        "trafficking": ["288", "288B", "350", "351", "352", "353", "354", "355", "356", "357", "358", "358A", "360A", "360C", "360D", "33", "39", "286C"],
+        "emotional_abuse": ["308A", "33", "39", "286C"],
+        "general_child_protection": ["286C", "309", "33", "39"]
+    }
+
+    allowed_categories = CATEGORY_ROUTING.get(norm_category, [norm_category, "general_child_protection"])
 
     # 1. Filter candidates: Keep primary laws that match allowed categories, and only contextually relevant supporting laws
     filtered_sections = []
     for section in sections:
         if getattr(section, "law_type", "primary") == "supporting":
-            if is_supporting_law_relevant(section.id, query, abuse_category):
+            if is_supporting_law_relevant(section.id, query, norm_category):
                 filtered_sections.append(section)
         else:
             # Check if category matches allowed categories for the predicted abuse category
@@ -285,7 +280,7 @@ def retrieve_relevant_laws(query: str, abuse_category: str, language: str, top_k
             section_keywords = [k.lower() for k in section.keywords]
             
             category_match = (
-                section_cat == abuse_category.lower() or
+                section_cat == norm_category or
                 any(tk in section_cat for tk in target_keywords) or
                 any(tk in k for tk in target_keywords for k in section_keywords)
             )
@@ -309,10 +304,21 @@ def retrieve_relevant_laws(query: str, abuse_category: str, language: str, top_k
             
             scored_results.append((boosted_score, section))
             
-        # 3. Filter by threshold (no strict pre-filtering blocker, dynamic list)
-        RELEVANCE_THRESHOLD = 0.20
+        # 3. Filter by threshold and category match
+        RELEVANCE_THRESHOLD = 0.40
             
-        strong_matches = [res for res in scored_results if res[0] >= RELEVANCE_THRESHOLD]
+        strong_matches = []
+        for score, section in scored_results:
+            if score >= RELEVANCE_THRESHOLD:
+                # D. After semantic retrieval, remove every result whose category or section number does not match the detected category
+                section_cat = section.abuse_category.lower()
+                section_num = section.section_number
+                
+                category_matches = (section_cat == norm_category)
+                section_matches = (section_num in ALLOWED_SECTIONS.get(norm_category, []))
+                
+                if category_matches or section_matches:
+                    strong_matches.append((score, section))
         
         # Sort by strongest match first
         strong_matches.sort(key=lambda x: x[0], reverse=True)
