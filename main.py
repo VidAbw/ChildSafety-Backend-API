@@ -5,12 +5,15 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from audio_guardian import router as audio_router
 from nanny_cam_guardian import router as nanny_router
-# from chat_counselor import router as chat_router       # Member 3 — AI Counselor
-# from game import router as game_router                 # Member 4 — S-ALS Game
+from app.api.v1.router import api_v1_router
 
 logging.basicConfig(level=logging.INFO)
 
-app = FastAPI(title="Child Safety Guardian API")
+app = FastAPI(
+    title="Child Safety Guardian API",
+    description="Backend API for Child Safety Guardian monitoring, telemetry ingestion, and alert management.",
+    version="1.0.0"
+)
 
 app.add_middleware(
     CORSMiddleware,
@@ -20,21 +23,20 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Connect the routers
+# Connect the existing domain routers
 app.include_router(nanny_router.router, prefix="/api/iot", tags=["Nanny Cam Guardian (MM-ODG)"])
 app.include_router(audio_router, prefix="/api/audio", tags=["Audio Guardian"])
-# app.include_router(chat_router.router, prefix="/api/chat", tags=["AI Counselor"])
-# app.include_router(game_router.router, prefix="/api/game", tags=["S-ALS Game"])
 
-
-
+# Connect the new Safety Alert Pipeline API (v1)
+app.include_router(api_v1_router, prefix="/api/v1")
 
 
 @app.get("/")
 def health_check():
     return {
         "status": "online",
-        "message": "Backend is running",
+        "message": "Child Safety Guardian API is running",
+        "version": "1.0.0"
     }
 
 
