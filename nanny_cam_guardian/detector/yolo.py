@@ -5,6 +5,9 @@ from dataclasses import dataclass, field
 from ultralytics import YOLO
 
 HAZARD_CLASSES = {"knife", "scissors", "fork"}
+PERSON_CONF_THRESHOLD = 0.5   # confidence floor for person detection — filters out weak/
+                               # partial detections (e.g. a hand alone) that would otherwise
+                               # flow through as an "unrecognized person"
 CHILD_HEIGHT_RATIO = 0.60     # remembered max height < 60% of tallest remembered → child
 IOU_MATCH_THRESHOLD = 0.25    # minimum IoU to link a detection to an existing track
 HEIGHT_MEMORY_FRAMES = 90     # frames to remember each person's max height (~3s at 30fps)
@@ -152,7 +155,8 @@ class YOLODetector:
             conf = float(box.conf[0])
 
             if label == "person":
-                persons.append(PersonBox(x1, y1, x2, y2, confidence=conf))
+                if conf >= PERSON_CONF_THRESHOLD:
+                    persons.append(PersonBox(x1, y1, x2, y2, confidence=conf))
             elif label in HAZARD_CLASSES and self.hazard_model is None:
                 # Only use stock model for hazards when no specialist exists
                 if conf >= STOCK_HAZARD_CONF_THRESHOLD:

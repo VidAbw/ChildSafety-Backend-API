@@ -1,6 +1,7 @@
 venv/
 .venv/
 .env
+dev_test_email_alerts.py
 __pycache__/
 __pycache__/main.cpython-313.pyc
 core/__pycache__/supabase.cpython-313.pyc

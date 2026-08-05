@@ -1,6 +1,7 @@
 # publisher/supabase_push.py
 from datetime import datetime, timezone
 
+from core.notifier.email_alert import send_nanny_cam_alert_email
 from core.supabase import db
 from nanny_cam_guardian.logic.threat import ThreatEvent
 
@@ -27,3 +28,5 @@ def push_alert(event: ThreatEvent, user_id: str) -> None:
         print(f"[publisher] WARNING: failed to insert alert — {payload}")
     else:
         print(f"[publisher] Alert pushed: level={event.level} type={event.type} prob={event.probability}")
+
+    send_nanny_cam_alert_email(event, user_id)

@@ -2,6 +2,8 @@ import asyncio
 import json
 import logging
 import os
+import time
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 from typing import Any
 
@@ -42,6 +44,14 @@ class PhoneAudioListener:
 
         self._task: asyncio.Task | None = None
         self._stop_event = asyncio.Event()
+
+        # Alert dispatch: DB insert always happens (audit trail); the guardian
+        # email is cooldown-gated so a sustained/repeated threat doesn't spam
+        # an inbox. Both run off the main thread so callers (e.g. the
+        # /upload-chunk HTTP handler) are never blocked by SMTP/Supabase I/O.
+        self._last_email_sent_at: dict[str, float] = {}
+        self.email_cooldown_seconds = float(os.getenv("AUDIO_ALERT_EMAIL_COOLDOWN_SECONDS", "60"))
+        self._alert_executor = ThreadPoolExecutor(max_workers=1)
 
     async def start(self) -> None:
         if not self.ws_url:
@@ -146,6 +156,27 @@ class PhoneAudioListener:
         return None
 
     def _trigger_supabase_alert(self, intensity_score: float, threat_level: str = "moderate", device_info: str = "unknown") -> None:
+        """
+        Fast, non-blocking entry point. Decides (synchronously, cheaply)
+        whether this alert is within the email cooldown, then hands off the
+        actual DB insert + email send to a background thread.
+        """
+        key = self.user_id or "default"
+        now = time.time()
+        send_email = (now - self._last_email_sent_at.get(key, 0)) >= self.email_cooldown_seconds
+        if send_email:
+            # Set at decision time (not after the email actually sends) to
+            # avoid a double-send race if this is called again before the
+            # background thread finishes.
+            self._last_email_sent_at[key] = now
+
+        self._alert_executor.submit(
+            self._push_alert_and_maybe_email, intensity_score, threat_level, device_info, send_email
+        )
+
+    def _push_alert_and_maybe_email(
+        self, intensity_score: float, threat_level: str, device_info: str, send_email: bool
+    ) -> None:
         data = {
             "sensor_type": "acoustic",
             "threat_category": "Vocal Aggression / Screaming",
@@ -164,6 +195,14 @@ class PhoneAudioListener:
         except Exception as exc:
             self.last_error = str(exc)
             logger.error("Failed to push alert to Supabase: %s", exc)
+
+        if send_email:
+            try:
+                from core.notifier.email_alert import send_audio_alert_email
+
+                send_audio_alert_email(self.user_id, intensity_score, threat_level, device_info)
+            except Exception as exc:
+                logger.error("Failed to send audio alert email: %s", exc)
 
 
 phone_audio_listener = PhoneAudioListener()
