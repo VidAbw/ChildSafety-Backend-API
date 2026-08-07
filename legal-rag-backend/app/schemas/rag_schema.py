@@ -19,6 +19,9 @@ class RelevantLaw(BaseModel):
     reporting_guidance_en: Optional[str] = None
     reporting_guidance_si: Optional[str] = None
     relevance_score: Optional[float] = None
+    explanation_variant: Optional[str] = None
+    matched_age_rule: Optional[str] = None
+    matched_legal_basis: Optional[str] = None
     related_provisions: Optional[List['RelevantLaw']] = []
 
 try:

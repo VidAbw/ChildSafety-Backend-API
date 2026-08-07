@@ -76,13 +76,14 @@ async def rag_query(request: RAGQueryRequest):
     # 3. Check for relevance
     if not relevant_laws:
         print(f"Rejected: No relevant laws found for description (category: {abuse_category})")
-        error_msg = "The description does not match a valid child abuse-related legal situation. No strong legal match found."
+        error_msg = "No strong child-abuse-related Penal Code match was found."
         if language_to_use == "si":
-            error_msg = "ඇතුළත් කළ විස්තරය ළමා අපයෝජනයට අදාළ නීතිමය තත්ත්වයකට නොගැලපේ. ශක්තිමත් නීතිමය ගැලපීමක් හමු නොවීය."
+            error_msg = "ළමා අපයෝජනයට අදාළ ශක්තිමත් දණ්ඩ නීති සංග්‍රහයේ වගන්තියක් හමු නොවීය."
         raise HTTPException(
             status_code=400,
             detail=error_msg
         )
+
 
     # Generate roadmap in the requested language using description and category
     decision_roadmap = generate_roadmap(request.description, abuse_category, language_to_use)
