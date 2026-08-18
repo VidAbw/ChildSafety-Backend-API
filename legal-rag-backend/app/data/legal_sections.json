@@ -256,6 +256,15 @@
       "ill-treatment",
       "corporal punishment"
     ],
+"reporting_guidance_en": "Report the cruelty to Police or NCPA 1929 and secure medical care for injuries sustained.",
+    "reporting_guidance_si": "කෲරත්වය පිළිබඳව වාර්තා කර දරුවාට සිදුවී ඇති තුවාල සඳහා වහාම වෛද්‍ය ප්‍රතිකාර ලබා දෙන්න.",
+    "keywords": [
+      "cruelty",
+      "assault",
+      "physical abuse",
+      "ill-treatment",
+      "corporal punishment"
+    ],
     "required_facts_all": [],
     "required_facts_any": [
       "physical_assault",
@@ -264,7 +273,9 @@
       "neglect"
     ],
     "optional_facts": [],
-    "source": "Sri Lanka Penal Code (Amendment Act No. 22 of 1995)"
+    "source": "Sri Lanka Penal Code (Amendment Act No. 22 of 1995)",
+    "source_document": "Sri-Lanka-Penal-Code.pdf",
+    "reporting_guidance": "This is a core section for child abuse reporting and legal guidance."
   },
   {
     "id": "pc_310",

@@ -121,6 +121,16 @@ def extract_canonical_facts(query: str, language: str = None) -> List[str]:
     query_lower = query.lower()
     extracted_facts = set()
 
+    # Define negation phrases that should suppress penetration fact
+    penetration_negations = [
+        "without intercourse",
+        "no intercourse",
+        "without penetration",
+        "no penetration",
+        "did not penetrate",
+        "no sexual intercourse",
+    ]
+
     for fact_id, lang_dict in CANONICAL_FACT_MAPPINGS.items():
         # Check English phrases
         for phrase in lang_dict.get("en", []):
@@ -134,6 +144,18 @@ def extract_canonical_facts(query: str, language: str = None) -> List[str]:
                 if phrase in query_lower:
                     extracted_facts.add(fact_id)
                     break
+
+    # Remove penetration fact if any negation phrase is present
+    if "penetration" in extracted_facts:
+        if any(neg in query_lower for neg in penetration_negations):
+            extracted_facts.remove("penetration")
+
+    # Ensure online_contact is only added when relevant keywords exist
+    if "online_contact" in extracted_facts:
+        online_keywords = set(CANONICAL_FACT_MAPPINGS.get("online_contact", {}).get("en", []))
+        online_keywords.update(CANONICAL_FACT_MAPPINGS.get("online_contact", {}).get("si", []))
+        if not any(kw in query_lower for kw in online_keywords):
+            extracted_facts.remove("online_contact")
 
     return sorted(list(extracted_facts))
 

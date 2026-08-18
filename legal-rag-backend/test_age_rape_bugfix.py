@@ -6,6 +6,7 @@ sys.stdout.reconfigure(encoding='utf-8')
 
 from app.services.classifier_service import classify_abuse_categories
 from app.services.fact_extraction_service import extract_canonical_facts, extract_victim_age
+# pyrefly: ignore [missing-import]
 from app.services.rag_service import retrieve_relevant_laws
 
 def test_age_bugfix():

@@ -19,6 +19,9 @@ TEXTS_PATH = os.path.join(os.path.dirname(__file__), '..', 'vector_store', 'text
 MODEL_NAME = 'paraphrase-multilingual-MiniLM-L12-v2'
 FORBIDDEN_SECTIONS = {"309"}
 
+# Set DEBUG_RETRIEVAL_LOG=true to enable verbose per-section diagnostics
+_DEBUG_LOG = os.getenv("DEBUG_RETRIEVAL_LOG", "false").strip().lower() == "true"
+
 # Whitelist mapping of verified child-abuse categories to allowed Penal Code / NCPA sections
 CHILD_ABUSE_ALLOWED_SECTIONS = {
     "physical_abuse": ["308A", "315", "316", "310", "311", "312", "313", "314", "317", "318"],
@@ -420,18 +423,20 @@ def retrieve_relevant_laws(query: str, abuse_category: str = None, language: str
 
     if not extracted_canonical_facts and primary_category != "general_child_protection":
         fallback_mode = True
-        print(f"[FALLBACK LOG] Canonical fact extraction produced 0 facts for category '{primary_category}'. Activating Fallback Evaluation Mode.")
+        if _DEBUG_LOG:
+            print(f"[FALLBACK LOG] Canonical fact extraction produced 0 facts for category '{primary_category}'. Activating Fallback Evaluation Mode.")
 
     BASE_THRESHOLD = 0.35 if fallback_mode else (0.15 if language == "si" else 0.25)
 
-    print("\n" + "="*80)
-    print(f"DEBUG RETRIEVAL LOG FOR QUERY: '{query}'")
-    print(f"victim_age: {victim_age}")
-    print(f"query_language: {language}")
-    print(f"primary_category: {primary_category}")
-    print(f"secondary_categories: {secondary_categories}")
-    print(f"extracted_canonical_facts: {extracted_canonical_facts}")
-    print("="*80)
+    if _DEBUG_LOG:
+        print("\n" + "="*80)
+        print(f"DEBUG RETRIEVAL LOG FOR QUERY: '{query}'")
+        print(f"victim_age: {victim_age}")
+        print(f"query_language: {language}")
+        print(f"primary_category: {primary_category}")
+        print(f"secondary_categories: {secondary_categories}")
+        print(f"extracted_canonical_facts: {extracted_canonical_facts}")
+        print("="*80)
 
     candidate_sections = []
     evaluation_logs = []
@@ -638,15 +643,16 @@ def retrieve_relevant_laws(query: str, abuse_category: str = None, language: str
                 accepted_sections.append((item["final_score"], section, item["exp_variant"], item["age_rule"]))
 
         evaluation_logs.sort(key=lambda x: str(x["section_number"]))
-        for log in evaluation_logs:
-            print(f"victim_age: {log.get('victim_age')}")
-            print(f"detected_facts: {log.get('extracted_canonical_facts')}")
-            print(f"section_number: {log.get('section_number')}")
-            print(f"matched_age_rule: {log.get('matched_age_rule')}")
-            print(f"matched_facts: {log.get('matched_facts')}")
-            print(f"rejected_reason: {log.get('rejection_reason')}")
-            print(f"explanation_variant: {log.get('explanation_variant')}")
-            print("-" * 80)
+        if _DEBUG_LOG:
+            for log in evaluation_logs:
+                print(f"victim_age: {log.get('victim_age')}")
+                print(f"detected_facts: {log.get('extracted_canonical_facts')}")
+                print(f"section_number: {log.get('section_number')}")
+                print(f"matched_age_rule: {log.get('matched_age_rule')}")
+                print(f"matched_facts: {log.get('matched_facts')}")
+                print(f"rejected_reason: {log.get('rejection_reason')}")
+                print(f"explanation_variant: {log.get('explanation_variant')}")
+                print("-" * 80)
 
         # 5. Group parent-child structure
         grouped_results = []
