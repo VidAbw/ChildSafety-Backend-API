@@ -256,15 +256,6 @@
       "ill-treatment",
       "corporal punishment"
     ],
-"reporting_guidance_en": "Report the cruelty to Police or NCPA 1929 and secure medical care for injuries sustained.",
-    "reporting_guidance_si": "කෲරත්වය පිළිබඳව වාර්තා කර දරුවාට සිදුවී ඇති තුවාල සඳහා වහාම වෛද්‍ය ප්‍රතිකාර ලබා දෙන්න.",
-    "keywords": [
-      "cruelty",
-      "assault",
-      "physical abuse",
-      "ill-treatment",
-      "corporal punishment"
-    ],
     "required_facts_all": [],
     "required_facts_any": [
       "physical_assault",
@@ -1295,5 +1286,66 @@
     "required_facts_any": [],
     "optional_facts": [],
     "source": "National Child Protection Authority Act, No. 50 of 1998"
+  },
+  {
+    "id": "pc_483",
+    "law_name": "Penal Code Section 483",
+    "section_number": "483",
+    "law_type": "primary",
+    "law_role": "offence",
+    "title": "Criminal intimidation",
+    "title_en": "Criminal intimidation",
+    "title_si": "අපරාධමය බියගැන්වීම",
+    "abuse_category": "general_child_protection",
+    "legal_text_summary": "Defines criminal intimidation as threatening another with injury to their person, reputation, or property, with intent to cause alarm, or to force/prevent actions.",
+    "simple_explanation": "Defines criminal intimidation as threatening another with injury to their person, reputation, or property, with intent to cause alarm, or to force/prevent actions.",
+    "simple_explanation_en": "Defines criminal intimidation as threatening another with injury to their person, reputation, or property, with intent to cause alarm, or to force/prevent actions.",
+    "simple_explanation_si": "යම් තැනැත්තෙකුට, ඔහුගේ කීර්තියට හෝ දේපළවලට හානියක් සිදුකරන බවට තර්ජනය කර බිය ගැන්වීම හෝ කිසියම් ක්‍රියාවක් කිරීමට/නතර කිරීමට බල කිරීම අපරාධමය බියගැන්වීම වේ.",
+    "reporting_guidance": "Report any threats of violence or intimidation to the police or child protection authorities immediately.",
+    "reporting_guidance_en": "Report any threats of violence or intimidation to the police or child protection authorities immediately.",
+    "reporting_guidance_si": "පහරදීම් හෝ බියගැන්වීම් වැනි තර්ජන පිළිබඳව වහාම පොලිසිය හෝ ළමා ආරක්ෂක බලධාරීන් දැනුවත් කරන්න.",
+    "keywords": [
+      "criminal intimidation",
+      "threats",
+      "threat of harm",
+      "alarm",
+      "intimidation"
+    ],
+    "required_facts_all": [],
+    "required_facts_any": [
+      "threats"
+    ],
+    "optional_facts": [],
+    "source": "Sri Lanka Penal Code"
+  },
+  {
+    "id": "pc_486",
+    "law_name": "Penal Code Section 486",
+    "section_number": "486",
+    "law_type": "primary",
+    "law_role": "punishment",
+    "title": "Punishment for criminal intimidation",
+    "title_en": "Punishment for criminal intimidation",
+    "title_si": "අපරාධමය බියගැන්වීම් සඳහා දඬුවම",
+    "abuse_category": "general_child_protection",
+    "legal_text_summary": "Prescribes punishment for criminal intimidation, including enhanced penalties if the threat is to cause death, grievous hurt, or destruction of property.",
+    "simple_explanation": "Prescribes punishment for criminal intimidation, including enhanced penalties if the threat is to cause death, grievous hurt, or destruction of property.",
+    "simple_explanation_en": "Prescribes punishment for criminal intimidation, including enhanced penalties if the threat is to cause death, grievous hurt, or destruction of property.",
+    "simple_explanation_si": "අපරාධමය බියගැන්වීම් සඳහා දඬුවම් නියම කරන අතර, මරණීය තර්ජන, බරපතළ තුවාල සිදුකිරීම් හෝ දේපළ විනාශ කිරීම් සඳහා දඬුවම් වැඩි වේ.",
+    "reporting_guidance": "Report any threats of violence or intimidation to the police or child protection authorities immediately.",
+    "reporting_guidance_en": "Report any threats of violence or intimidation to the police or child protection authorities immediately.",
+    "reporting_guidance_si": "පහරදීම් හෝ බියගැන්වීම් වැනි තර්ජන පිළිබඳව වහාම පොලිසිය හෝ ළමා ආරක්ෂක බලධාරීන් දැනුවත් කරන්න.",
+    "keywords": [
+      "criminal intimidation punishment",
+      "punishment for threat",
+      "enhanced penalty",
+      "intimidation"
+    ],
+    "required_facts_all": [],
+    "required_facts_any": [
+      "threats"
+    ],
+    "optional_facts": [],
+    "source": "Sri Lanka Penal Code"
   }
 ]

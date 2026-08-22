@@ -126,8 +126,15 @@ async def rag_query(request: RAGQueryRequest):
         decision_roadmap_en=roadmap_en,
         decision_roadmap_si=roadmap_si,
         reporting_contacts=reporting_contacts,
-        privacy_note=privacy_note
+        privacy_note=privacy_note,
+        incident_summary=getattr(relevant_laws, "incident_summary", ""),
+        facts=getattr(relevant_laws, "facts", []),
+        applicable_laws=getattr(relevant_laws, "applicable_laws", []),
+        potential_laws=getattr(relevant_laws, "potential_laws", []),
+        rejected_laws=getattr(relevant_laws, "rejected_laws", []),
+        additional_information_needed=getattr(relevant_laws, "additional_information_needed", [])
     )
+
 
 @router.post("/api/rag/import")
 async def import_penal_code(sections: List[LegalSection], rebuild_index: bool = True):

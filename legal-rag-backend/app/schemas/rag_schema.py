@@ -41,3 +41,11 @@ class RAGQueryResponse(BaseModel):
     decision_roadmap_si: Optional[List[str]] = None
     reporting_contacts: List[dict]  # List of {"name": str, "contact": str, "description": str}
     privacy_note: str
+    
+    # Upgraded structured response fields
+    incident_summary: Optional[str] = None
+    facts: Optional[List[dict]] = None
+    applicable_laws: Optional[List[dict]] = None
+    potential_laws: Optional[List[dict]] = None
+    rejected_laws: Optional[List[dict]] = None
+    additional_information_needed: Optional[List[dict]] = None

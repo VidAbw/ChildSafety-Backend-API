@@ -24,4 +24,7 @@ class LegalSection(BaseModel):
     optional_facts: List[str] = []
     keywords: List[str] = []
     source: str = "Sri Lanka Penal Code"
-    law_role: str = "offence"
+    law_role: str = "offence"
+    source_version: Optional[str] = "1.0.0"
+    database_version: Optional[str] = "1.0.0"
+
