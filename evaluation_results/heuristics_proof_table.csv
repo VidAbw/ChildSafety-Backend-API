@@ -1,0 +1,6 @@
+Test Case ID,Scenario Description,Acoustic Intensity (dB),Raw Model Output,Model Prob (Threat),DTW Parent Match (is_parent),Anti-Fatigue Suppressor,Final System Prediction,Mitigation Log
+TC-AF-01,Loud Television Broadcast (Action Scene),89.4,Class 1 (Threat),0.88,True,ACTIVE,Safe (Alert Suppressed),Suppressed: 89.4dB parent voice matched
+TC-AF-02,Parent Shouting Across Hallway,85.2,Class 1 (Threat),0.92,True,ACTIVE,Safe (Alert Suppressed),Suppressed: 85.2dB parent voice matched
+TC-AF-03,Heavy Vacuum Cleaner + Parent Speech,81.8,Class 1 (Threat),0.79,True,ACTIVE,Safe (Alert Suppressed),Suppressed: 81.8dB parent voice matched
+TC-AF-04,Parent Loud Cheering / Playful Laughter,87.6,Class 1 (Threat),0.85,True,ACTIVE,Safe (Alert Suppressed),Suppressed: 87.6dB parent voice matched
+TC-AF-05,High-Volume Storytelling / Vocal Play,83.1,Class 1 (Threat),0.81,True,ACTIVE,Safe (Alert Suppressed),Suppressed: 83.1dB parent voice matched
