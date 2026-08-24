@@ -42,23 +42,27 @@ def save_config(config):
 def get_registered_mfcc_profiles() -> list:
     """
     Fetches all active voice profiles from Supabase registered_voice_profiles table.
-    Returns a list of MFCC 2D arrays ready for DTW comparison.
+    Returns a list of profile dicts with MFCC 2D arrays ready for DTW comparison.
     """
     try:
         result = db.table("registered_voice_profiles") \
-            .select("dtw_feature_matrix, person_name, role") \
+            .select("id, dtw_feature_matrix, person_name, role") \
             .eq("is_active", True) \
             .execute()
 
         rows = result.data or []
-        logger.info(f"Loaded {len(rows)} active voice profile(s) from Supabase.")
-        matrices = []
+        profiles = []
         for row in rows:
             matrix = row.get("dtw_feature_matrix")
             if matrix is not None:
-                matrices.append(matrix)
-                logger.info(f"  - Profile: {row.get('person_name')} ({row.get('role')})")
-        return matrices
+                profiles.append({
+                    "id": row.get("id"),
+                    "matrix": matrix,
+                    "person_name": row.get("person_name", "Parent"),
+                    "role": row.get("role", "Parent")
+                })
+        logger.info(f"Loaded {len(profiles)} active voice profile(s) from Supabase.")
+        return profiles
     except Exception as e:
         logger.warning(f"Could not load profiles from Supabase: {e}")
         return []
@@ -70,15 +74,26 @@ def get_registered_mfcc_profiles() -> list:
 def get_audio_listener_status() -> dict:
     config = get_config()
     try:
-        profiles = db.table("registered_voice_profiles").select("id").eq("is_active", True).execute()
-        profile_count = len(profiles.data or [])
+        profiles = db.table("registered_voice_profiles") \
+            .select("id, person_name, role, is_active, last_verified") \
+            .eq("is_active", True) \
+            .execute()
+        profile_list = profiles.data or []
+        profile_count = len(profile_list)
     except Exception:
+        profile_list = []
         profile_count = 0
 
     return {
         "backend": "online",
         "parent_name": config.get("parent_name", "Not registered"),
         "registered_profiles": profile_count,
+        "active_profiles": profile_list,
+        "latest_presence": _last_result.get("presence_status", "Monitoring Area"),
+        "active_speaker": _last_result.get("active_speaker"),
+        "speaker_role": _last_result.get("speaker_role"),
+        "last_seen": _last_result.get("last_seen"),
+        "last_status": _last_result.get("status", "System Active"),
         "ws_listener": {"disabled": True, "message": "Phone audio listener has been disabled."},
     }
 
@@ -185,12 +200,14 @@ async def upload_audio_chunk(
         }
     # ── END REGISTRATION INTERCEPT ───────────────────────────────
 
-    import librosa
     try:
-        y, sr = librosa.load(io.BytesIO(contents), sr=None)
-        rms = np.sqrt(np.mean(y**2))
-        rms_scaled = rms * 32767.0
-        amplitude_db = float(20 * np.log10(rms_scaled) if rms_scaled > 0 else 0.0)
+        y = predictor.decode_audio(contents, target_sr=22050)
+        if y is not None and len(y) > 0:
+            rms = np.sqrt(np.mean(y**2))
+            rms_scaled = rms * 32767.0
+            amplitude_db = float(20 * np.log10(rms_scaled) if rms_scaled > 0 else 0.0)
+        else:
+            amplitude_db = 0.0
     except Exception:
         amplitude_db = 0.0
 
@@ -204,18 +221,30 @@ async def upload_audio_chunk(
     is_parent = False
 
     # ── 3. Parent Voice Verification ─────────────────────────
-    # Only check if there's enough volume to be a voice
-    if amplitude_db > 45.0:
-        # Primary: Check against all Supabase registered profiles
-        stored_matrices = get_registered_mfcc_profiles()
-        if stored_matrices:
-            is_parent = predictor.verify_parent_from_matrix(contents, stored_matrices)
-            logger.info(f"Supabase profile verification: {'MATCH' if is_parent else 'no match'}")
+    matched_profile = None
+    # Only verify voice if there is active sound/speech energy (>= 65dB) or if AI flagged a threat
+    if amplitude_db >= 65.0 or class_id == 1:
+        stored_profiles = get_registered_mfcc_profiles()
+        if stored_profiles:
+            is_parent, matched_profile, dtw_dist = predictor.verify_parent_from_matrix(contents, stored_profiles)
+            if is_parent and matched_profile and matched_profile.get("id"):
+                try:
+                    from datetime import datetime, timezone
+                    now_iso = datetime.now(timezone.utc).isoformat()
+                    db.table("registered_voice_profiles").update({"last_verified": now_iso}).eq("id", matched_profile["id"]).execute()
+                except Exception as e:
+                    logger.debug(f"Could not update last_verified in Supabase: {e}")
+            logger.info(f"Supabase profile verification: {'MATCH (' + str(matched_profile.get('name') if matched_profile else '') + ')' if is_parent else 'no match'}")
         else:
             # Fallback: local WAV file (backward compatibility)
             is_parent = predictor.verify_parent(contents, PARENT_PROFILE_PATH)
             if is_parent:
+                matched_profile = {"name": parent_name, "role": "Parent", "id": None}
                 logger.info("Parent verified via local WAV fallback.")
+
+    speaker_name = (matched_profile.get("name") if matched_profile else None) or parent_name
+    speaker_role = (matched_profile.get("role") if matched_profile else None) or "Parent"
+    speaker_display = f"{speaker_name} ({speaker_role})" if matched_profile else speaker_name
 
     # ── 4. Intensity Override (compensates for overfitted model) ─
     if class_id == 0 and amplitude_db > 80.0:
@@ -227,8 +256,9 @@ async def upload_audio_chunk(
     if class_id == 1:
         if is_parent:
             # Parent is speaking loudly — override the threat
-            status_msg = f"Safe ({parent_name} speaking — Threat Override)"
+            status_msg = f"Safe ({speaker_display} speaking — Threat Override)"
             class_id = 0
+            mitigation_msg = f"Anti-Fatigue: Loud voice confirmed as authorized parent ({speaker_display}). Alert suppressed."
         else:
             threat_level = "high" if probability >= 0.85 else "moderate"
             status_msg = f"Threat Detected ({threat_level.capitalize()})"
@@ -238,10 +268,19 @@ async def upload_audio_chunk(
                 device_info=device_info
             )
     else:
-        if is_parent:
-            status_msg = f"Safe ({parent_name} speaking)"
-        elif amplitude_db > 70.0:
+        if is_parent and amplitude_db >= 65.0:
+            status_msg = f"Safe ({speaker_display} speaking)"
+        elif amplitude_db >= 75.0:
             mitigation_msg = f"Anti-Fatigue: {amplitude_db:.1f}dB detected but AI confirmed SAFE. Alert suppressed."
+            status_msg = "Safe (Confirmed Safe)"
+        elif amplitude_db < 65.0:
+            status_msg = "Safe (Quiet / Normal)"
+        else:
+            status_msg = "Safe (Normal)"
+
+    from datetime import datetime, timezone
+    now_iso = datetime.now(timezone.utc).isoformat()
+    presence_status = "Active Nearby" if (is_parent and amplitude_db >= 65.0) else ("Monitoring Area" if not is_parent else "Present")
 
     result = {
         "filename": file.filename,
@@ -251,6 +290,10 @@ async def upload_audio_chunk(
         "amplitude_db": round(float(amplitude_db), 2),
         "mitigation_message": mitigation_msg,
         "is_parent": is_parent,
+        "active_speaker": speaker_name if (is_parent and amplitude_db >= 65.0) else (_last_result.get("active_speaker") if _last_result else None),
+        "speaker_role": speaker_role if (is_parent and amplitude_db >= 65.0) else (_last_result.get("speaker_role") if _last_result else None),
+        "presence_status": presence_status,
+        "last_seen": now_iso if (is_parent and amplitude_db >= 65.0) else (_last_result.get("last_seen") if _last_result else None),
         "device_info": device_info,
     }
 
@@ -262,6 +305,7 @@ async def upload_audio_chunk(
 
 
 @router.post("/register-parent")
+@router.post("/register-voice")
 async def register_parent_voice(
     file: UploadFile = File(...),
     parent_name: str = Form("Parent"),
