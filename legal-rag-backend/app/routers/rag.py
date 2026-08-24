@@ -10,6 +10,7 @@ from app.services.rag_service import (
     build_faiss_index,
     load_legal_sections,
 )
+from app.services.fact_extraction_service import extract_victim_age
 from app.services.roadmap_service import generate_roadmap
 from app.services.supabase_service import get_reporting_contacts
 import time
@@ -65,6 +66,27 @@ async def rag_query(request: RAGQueryRequest):
             detail=error_msg
         )
 
+    # 3. Validate victim age scope (Child Protection Scope: Under 18)
+    extracted_age = extract_victim_age(request.description)
+    if extracted_age is not None and extracted_age >= 18:
+        print(f"Rejected: Victim age {extracted_age} is 18 or older (out of child protection scope).")
+        error_msg = (
+            f"The person described in this incident is {extracted_age} years old. "
+            "This legal guidance service is designed for incidents involving "
+            "children under 18 years of age. For assistance with an adult-related "
+            "incident, please contact the appropriate adult support or legal service."
+        )
+        if language_to_use == "si":
+            error_msg = (
+                f"මෙම සිද්ධියේ සඳහන් පුද්ගලයාගේ වයස අවුරුදු {extracted_age}කි. "
+                "මෙම නීතිමය මාර්ගෝපදේශන සේවාව සකස් කර ඇත්තේ වයස අවුරුදු 18ට අඩු ළමුන්ට අදාළ සිද්ධීන් සඳහා පමණි. "
+                "වැඩිහිටියන්ට අදාළ සිද්ධියක් සඳහා උපකාර ලබා ගැනීමට, කරුණාකර සුදුසු වැඩිහිටි සහන හෝ නීති සේවාවක් අමතන්න."
+            )
+        raise HTTPException(
+            status_code=400,
+            detail=error_msg
+        )
+
     start_time = time.time()
 
     # Classify abuse
@@ -73,9 +95,13 @@ async def rag_query(request: RAGQueryRequest):
     # Retrieve relevant laws using filtered RAG-style search
     relevant_laws = retrieve_relevant_laws(request.description, abuse_category, language_to_use)
 
-    # 3. Check for relevance
-    if not relevant_laws:
-        print(f"Rejected: No relevant laws found for description (category: {abuse_category})")
+    # 3. Check for relevance or insufficient facts
+    is_insufficient = False
+    if relevant_laws and len(relevant_laws) == 1 and relevant_laws[0].section == "INSUFFICIENT_FACTS":
+        is_insufficient = True
+
+    if not relevant_laws or is_insufficient or (not getattr(relevant_laws, "applicable_laws", []) and not getattr(relevant_laws, "potential_laws", [])):
+        print(f"Rejected: No relevant laws found or insufficient facts (category: {abuse_category})")
         error_msg = "No strong child-abuse-related Penal Code match was found."
         if language_to_use == "si":
             error_msg = "ළමා අපයෝජනයට අදාළ ශක්තිමත් දණ්ඩ නීති සංග්‍රහයේ වගන්තියක් හමු නොවීය."

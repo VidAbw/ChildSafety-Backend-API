@@ -104,9 +104,9 @@ def test_system():
     q12 = "I bought a second-hand bicycle from a shop but the seller refused to deliver the receipt and breached the purchase contract."
     cat12 = classify_abuse(q12)
     results12 = retrieve_relevant_laws(q12, cat12, language="en")
-    sec12 = [r.section for r in results12]
+    sec12 = [r.section for r in results12 if r.section != "INSUFFICIENT_FACTS"]
     print(f"\n[Test 12: Unrelated Non-Child-Abuse Query] Category: {cat12} | Sections: {sec12}")
-    assert len(results12) == 0, f"EXPECTED 0 MATCHES FOR UNRELATED QUERY! Got: {sec12}"
+    assert len(sec12) == 0, f"EXPECTED 0 MATCHES FOR UNRELATED QUERY! Got: {sec12}"
 
     print("\n" + "="*80)
     print("ALL 12 VERIFIED CHILD-ABUSE INTEGRATION TESTS PASSED SUCCESSFULLY!")

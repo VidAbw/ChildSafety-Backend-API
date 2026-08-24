@@ -19,15 +19,23 @@ if create_client and config.SUPABASE_URL and config.SUPABASE_ANON_KEY:
 def get_legal_sections() -> List[LegalSection]:
     if not supabase:
         return []
-    response = supabase.table('legal_sections').select('*').execute()
-    return [LegalSection(**item) for item in response.data or []]
+    try:
+        response = supabase.table('legal_sections').select('*').execute()
+        return [LegalSection(**item) for item in response.data or []]
+    except Exception as e:
+        print(f"Supabase get_legal_sections error: {e}")
+        return []
 
 
 def get_reporting_contacts() -> List[Dict]:
     if not supabase:
         return []
-    response = supabase.table('reporting_contacts').select('*').execute()
-    return response.data or []
+    try:
+        response = supabase.table('reporting_contacts').select('*').execute()
+        return response.data or []
+    except Exception as e:
+        print(f"Supabase get_reporting_contacts error: {e}")
+        return []
 
 
 def save_feedback(abuse_category: str, retrieved_section: str, rating: str, comment: str = ""):

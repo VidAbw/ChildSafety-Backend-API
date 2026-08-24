@@ -312,6 +312,113 @@ def get_model():
     return _model
 
 
+AGE_METADATA = {
+    "pc_308": {
+        "min_age": None,
+        "max_age": 12,
+        "under_age_condition": True,
+        "child_only_condition": True,
+        "no_age_restriction": False
+    },
+    "pc_308a": {
+        "min_age": None,
+        "max_age": 18,
+        "under_age_condition": True,
+        "child_only_condition": True,
+        "no_age_restriction": False
+    },
+    "pc_352": {
+        "min_age": None,
+        "max_age": 16,  # Male 14, Female 16 (handled dynamically in helper)
+        "under_age_condition": True,
+        "child_only_condition": True,
+        "no_age_restriction": False
+    },
+    "pc_360a": {
+        "min_age": None,
+        "max_age": 21,
+        "under_age_condition": True,
+        "child_only_condition": True,
+        "no_age_restriction": False
+    },
+    "pc_360b": {
+        "min_age": None,
+        "max_age": 18,
+        "under_age_condition": True,
+        "child_only_condition": True,
+        "no_age_restriction": False
+    },
+    "pc_360e": {
+        "min_age": None,
+        "max_age": 18,
+        "under_age_condition": True,
+        "child_only_condition": True,
+        "no_age_restriction": False
+    },
+    "pc_286c": {
+        "min_age": None,
+        "max_age": 18,
+        "under_age_condition": True,
+        "child_only_condition": True,
+        "no_age_restriction": False
+    },
+    "pc_288": {
+        "min_age": None,
+        "max_age": 18,
+        "under_age_condition": True,
+        "child_only_condition": True,
+        "no_age_restriction": False
+    },
+    "pc_288a": {
+        "min_age": None,
+        "max_age": 18,
+        "under_age_condition": True,
+        "child_only_condition": True,
+        "no_age_restriction": False
+    },
+    "pc_288b": {
+        "min_age": None,
+        "max_age": 18,
+        "under_age_condition": True,
+        "child_only_condition": True,
+        "no_age_restriction": False
+    },
+    "ncpa_39": {
+        "min_age": None,
+        "max_age": 18,
+        "under_age_condition": True,
+        "child_only_condition": True,
+        "no_age_restriction": False
+    },
+    "ncpa_33": {
+        "min_age": None,
+        "max_age": 18,
+        "under_age_condition": True,
+        "child_only_condition": True,
+        "no_age_restriction": False
+    }
+}
+
+def get_provision_age_metadata(section_id: str, facts: dict = None) -> dict:
+    normalized_id = str(section_id).strip().lower()
+    meta = AGE_METADATA.get(normalized_id, {
+        "min_age": None,
+        "max_age": None,
+        "under_age_condition": False,
+        "child_only_condition": False,
+        "no_age_restriction": True
+    }).copy()
+    
+    # Section 352: males under 14, females under 16
+    if normalized_id == "pc_352" and facts is not None:
+        if facts.get("victim_sex") == "male":
+            meta["max_age"] = 14
+        else:
+            meta["max_age"] = 16
+            
+    return meta
+
+
 def load_legal_sections() -> List[LegalSection]:
     global _sections
     if _sections is None:
@@ -466,6 +573,12 @@ SECTION_GROUPS = {
     # Rape group
     "363": "rape_group",
     "364": "rape_group",
+    # Sexual offences group
+    "345": "sexual_group",
+    "364A": "sexual_group",
+    "365": "sexual_group",
+    "365A": "sexual_group",
+    "365B": "sexual_group",
     # Kidnapping group
     "352": "kidnap_group",
     "350": "kidnap_group",
@@ -476,15 +589,38 @@ SECTION_GROUPS = {
     "356": "kidnap_group",
     "357": "kidnap_group",
     "358": "kidnap_group",
-    # Hurt group
+    "358A": "kidnap_group",
+    # Hurt & Cruelty group
     "308A": "hurt_group",
     "310": "hurt_group",
     "311": "hurt_group",
     "312": "hurt_group",
     "313": "hurt_group",
     "314": "hurt_group",
+    "315": "hurt_group",
+    "316": "hurt_group",
     "317": "hurt_group",
     "318": "hurt_group",
+    # Neglect & Abandonment group
+    "308": "neglect_group",
+    # Trafficking & Procurement group
+    "360A": "trafficking_group",
+    "360B": "trafficking_group",
+    "360C": "trafficking_group",
+    "360D": "trafficking_group",
+    "360E": "trafficking_group",
+    # Online & Material abuse group
+    "286A": "material_abuse_group",
+    "286B": "material_abuse_group",
+    "286C": "material_abuse_group",
+    "365C": "material_abuse_group",
+    # Begging group
+    "288": "begging_group",
+    # NCPA group
+    "39": "ncpa_group",
+    "33": "ncpa_group",
+    "ncpa_39": "ncpa_group",
+    "ncpa_33": "ncpa_group",
     # Intimidation group
     "483": "intimidation_group",
     "486": "intimidation_group"
@@ -638,31 +774,151 @@ def extract_all_structured_facts(query: str, language: str) -> dict:
         if any(kw in query_lower for kw in child_kws):
             is_minor = True
     facts["is_minor"] = is_minor
+
+    # Extract premises reporting duty fact
+    query_lower = query.lower()
+    has_premises_role = any(kw in query_lower for kw in [
+        "owner", "occupier", "manager", "landlord", "hotel keeper", "premises owner", "building owner", "tenant", "proprietor",
+        "අයිතිකරු", "කළමනාකරු", "හෝටල් හිමියා", "පරිශ්‍රය භාර", "හිමිකරු", "පාලක"
+    ])
+    has_reporting_duty = any(kw in query_lower for kw in [
+        "duty to inform", "failed to report", "failed to inform", "failed to notify", "did not report", "inform the police", "report to police",
+        "දැනුම් දීමේ වගකීම", "පොලිසියට දැනුම් නොදීම", "වාර්තා නොකිරීම", "දැනුම් දීම"
+    ])
+    facts["premises_reporting_duty"] = has_premises_role and has_reporting_duty
+
     return facts
 
 
 def evaluate_legal_elements(sec_num: str, facts: dict) -> Tuple[dict, str]:
     elements = {}
     
-    # Context elements (age, relationship) evaluate to SATISFIED, NOT_SATISFIED, or UNKNOWN
-    def eval_context(val: Optional[bool]) -> str:
-        if val is True: return "SATISFIED"
-        if val is False: return "NOT_SATISFIED"
+    # Helper to map True/False/None to SATISFIED/NOT_SATISFIED/UNKNOWN
+    def eval_val(v: Optional[bool]) -> str:
+        if v is True: return "SATISFIED"
+        if v is False: return "NOT_SATISFIED"
         return "UNKNOWN"
 
-    # Core conduct/injury elements MUST be True to be SATISFIED, otherwise they are NOT_SATISFIED
-    def eval_conduct(val: Optional[bool]) -> str:
-        if val is True: return "SATISFIED"
-        return "NOT_SATISFIED"
+    # Core statutory requirements pre-filtering (Requirement 10 & 15)
+    
+    # 1. Begging: No begging provision without begging conduct
+    if sec_num == "288":
+        if facts.get("begging") is not True:
+            return {"begging_conduct": "NOT_SATISFIED"}, "rejected"
+            
+    # 2. Kidnapping/Abduction: No kidnapping without kidnapping, abduction, or taking facts
+    if sec_num in ["350", "351", "352", "353", "354", "355", "356", "357", "358"]:
+        if not (facts.get("kidnapping") is True or facts.get("abduction") is True or facts.get("taking_from_guardian") is True):
+            return {"kidnapping_or_abduction_conduct": "NOT_SATISFIED"}, "rejected"
+            
+    # 3. Incest: No incest without family relationship AND sexual conduct
+    if sec_num == "364A":
+        if facts.get("offender_relationship") not in ["parent", "relative"]:
+            return {"incestuous_relationship": "NOT_SATISFIED"}, "rejected"
+        if not (facts.get("penetration") is True or facts.get("intercourse") is True or facts.get("sexual_contact") is True or facts.get("sexual_act") is True or facts.get("sexual_touching") is True):
+            return {"sexual_conduct": "NOT_SATISFIED"}, "rejected"
+            
+    # 4. Online / Material Abuse: No online/material abuse without online or sexual-material facts
+    if sec_num in ["286A", "286B", "365C"]:
+        if not (facts.get("online_contact") is True or facts.get("sexual_image_material") is True):
+            return {"online_or_material_abuse_conduct": "NOT_SATISFIED"}, "rejected"
+            
+    # 5. Rape: No rape-specific provision without rape facts (penetration or intercourse)
+    if sec_num in ["363", "364"]:
+        if not (facts.get("penetration") is True or facts.get("intercourse") is True):
+            return {"sexual_intercourse_penetration": "NOT_SATISFIED"}, "rejected"
+            
+    # 6. Grievous Hurt: No grievous-hurt provision without grievous-hurt indicators
+    if sec_num in ["313", "316", "318"]:
+        if facts.get("injury_severity") != "grievous":
+            return {"grievous_hurt_category_satisfied": "NOT_SATISFIED"}, "rejected"
+            
+    # 7. Abandonment: No abandonment provision without abandonment conduct
+    if sec_num == "308":
+        if facts.get("abandonment") is not True:
+            return {"abandonment_conduct": "NOT_SATISFIED"}, "rejected"
 
+    # 8. Procurer (Section 288A)
+    if sec_num == "288A":
+        if facts.get("employ_child_as_procurer") is not True:
+            return {"employ_child_as_procurer": "NOT_SATISFIED"}, "rejected"
+
+    # 9. Restricted articles (Section 288B)
+    if sec_num == "288B":
+        if facts.get("traffic_restricted_articles") is not True:
+            return {"traffic_restricted_articles": "NOT_SATISFIED"}, "rejected"
+
+    # 10. Simple hurt / assault: No hurt provision without physical assault or physical injury
+    if sec_num in ["310", "312", "314", "315", "317"]:
+        if not (facts.get("physical_assault") is True or facts.get("physical_injury") is True):
+            return {"hurt_or_assault_conduct": "NOT_SATISFIED"}, "rejected"
+
+    # 11. Unnatural / sodomy
+    if sec_num == "365":
+        if not (facts.get("unnatural_intercourse") is True or facts.get("sodomy") is True):
+            return {"unnatural_conduct": "NOT_SATISFIED"}, "rejected"
+
+    # 12. Gross indecency
+    if sec_num == "365A":
+        if facts.get("gross_indecency") is not True:
+            return {"gross_indecency_conduct": "NOT_SATISFIED"}, "rejected"
+
+    # 13. Grave sexual abuse
+    if sec_num == "365B":
+        if not (facts.get("sexual_touching") is True or facts.get("sexual_contact") is True or facts.get("sexual_act") is True):
+            return {"grave_sexual_conduct": "NOT_SATISFIED"}, "rejected"
+
+    # 14. Sexual harassment
+    if sec_num == "345":
+        if not (facts.get("sexual_harassment") is True or facts.get("sexual_touching") is True or facts.get("sexual_contact") is True or facts.get("sexual_act") is True):
+            return {"sexual_harassment_conduct": "NOT_SATISFIED"}, "rejected"
+
+    # 15. Soliciting
+    if sec_num == "360E":
+        if not (facts.get("commercial_exploitation") is True or facts.get("sexual_contact") is True or facts.get("sexual_act") is True):
+            return {"soliciting_conduct": "NOT_SATISFIED"}, "rejected"
+
+    # 16. Exploitation
+    if sec_num == "360B":
+        if not (facts.get("commercial_exploitation") is True or facts.get("sexual_image_material") is True):
+            return {"exploitation_conduct": "NOT_SATISFIED"}, "rejected"
+
+    # 17. Procuration
+    if sec_num == "360A":
+        if facts.get("commercial_exploitation") is not True:
+            return {"procuring_conduct": "NOT_SATISFIED"}, "rejected"
+
+    # 18. Trafficking
+    if sec_num in ["360C", "360D", "358A"]:
+        if not (facts.get("trafficking") is True or facts.get("commercial_exploitation") is True or facts.get("begging") is True):
+            return {"trafficking_or_exploitation_conduct": "NOT_SATISFIED"}, "rejected"
+
+    # 19. Criminal intimidation
+    if sec_num in ["483", "486"]:
+        if not (facts.get("threats") is True or facts.get("threat_of_harm") is True or facts.get("threat_to_keep_silent") is True):
+            return {"threat_conduct": "NOT_SATISFIED"}, "rejected"
+
+    # 20. Premises reporting duty
+    if sec_num == "286C":
+        if facts.get("premises_reporting_duty") is not True:
+            return {"premises_reporting_duty": "NOT_SATISFIED"}, "rejected"
+
+    # 21. Voluntarily causing hurt/grievous hurt to extort property: requires threats/extortion
+    if sec_num in ["317", "318"]:
+        if not (facts.get("threats") is True or facts.get("threat_of_harm") is True or facts.get("threat_to_keep_silent") is True):
+            return {"extortion_coercion_intent": "NOT_SATISFIED"}, "rejected"
+
+    # Detailed element evaluations
     if sec_num == "308A":
-        elements["victim_under_18"] = eval_context(facts.get("is_minor"))
-        elements["offender_has_custody_charge_or_care"] = eval_context(facts.get("custody_or_care"))
-        elements["wilful_assault_ill_treatment_neglect_abandonment"] = eval_conduct(
+        elements["victim_under_18"] = eval_val(facts.get("is_minor"))
+        elements["offender_has_custody_charge_or_care"] = eval_val(facts.get("custody_or_care"))
+        elements["wilful_assault_ill_treatment_neglect_abandonment"] = eval_val(
             facts.get("physical_assault") is True or facts.get("neglect") is True or facts.get("abandonment") is True
         )
-        elements["conduct_likely_to_cause_suffering_or_injury"] = eval_conduct(
-            facts.get("health_suffering") is True or facts.get("physical_injury") is True or facts.get("physical_assault") is True or facts.get("neglect") is True or facts.get("abandonment") is True or facts.get("food_deprivation") is True
+        elements["conduct_likely_to_cause_suffering_or_injury"] = eval_val(
+            facts.get("health_suffering") is True or facts.get("physical_injury") is True or 
+            facts.get("physical_assault") is True or facts.get("neglect") is True or 
+            facts.get("abandonment") is True or facts.get("food_deprivation") is True
         )
 
     elif sec_num == "308":
@@ -671,54 +927,62 @@ def evaluate_legal_elements(sec_num: str, facts: dict) -> Tuple[dict, str]:
             is_u12 = facts["victim_age"] < 12
         else:
             is_u12 = facts.get("is_minor")
-        elements["victim_under_12"] = eval_context(is_u12)
-        elements["parent_or_person_having_care"] = eval_context(facts.get("custody_or_care"))
-        elements["abandonment_or_exposure"] = eval_conduct(facts.get("abandonment"))
-        elements["intent_to_wholly_abandon"] = eval_conduct(facts.get("intent_to_wholly_abandon"))
+        elements["victim_under_12"] = eval_val(is_u12)
+        elements["parent_or_person_having_care"] = eval_val(facts.get("custody_or_care"))
+        elements["abandonment_or_exposure"] = eval_val(facts.get("abandonment"))
+        elements["intent_to_wholly_abandon"] = eval_val(facts.get("intent_to_wholly_abandon"))
+
+    elif sec_num == "288":
+        elements["begging_conduct"] = eval_val(facts.get("begging"))
+        elements["victim_child"] = eval_val(facts.get("is_minor"))
+
+    elif sec_num == "288A":
+        elements["employ_child_as_procurer"] = eval_val(facts.get("employ_child_as_procurer"))
+        elements["victim_child"] = eval_val(facts.get("is_minor"))
+
+    elif sec_num == "288B":
+        elements["traffic_restricted_articles"] = eval_val(facts.get("traffic_restricted_articles"))
+        elements["victim_child"] = eval_val(facts.get("is_minor"))
 
     elif sec_num in ["310", "312", "314"]:
-        elements["voluntarily_causing_hurt"] = eval_conduct(facts.get("physical_assault"))
-        elements["causing_bodily_pain_disease_infirmity"] = eval_conduct(facts.get("physical_injury"))
+        elements["voluntarily_causing_hurt"] = eval_val(facts.get("physical_assault"))
+        elements["causing_bodily_pain_disease_infirmity"] = eval_val(facts.get("physical_injury"))
 
     elif sec_num == "311":
-        # Definition section: satisfied for educational reference if physical injury is present
-        elements["grievous_hurt_definition_reference"] = eval_context(facts.get("physical_injury"))
+        elements["grievous_hurt_definition_reference"] = eval_val(facts.get("physical_injury"))
 
     elif sec_num == "313":
-        elements["voluntarily_causing_hurt"] = eval_conduct(facts.get("physical_assault"))
-        elements["grievous_hurt_category_satisfied"] = eval_conduct(facts.get("injury_severity") == "grievous")
+        elements["voluntarily_causing_hurt"] = eval_val(facts.get("physical_assault"))
+        elements["grievous_hurt_category_satisfied"] = eval_val(facts.get("injury_severity") == "grievous")
 
     elif sec_num == "315":
-        elements["voluntarily_causing_hurt"] = eval_conduct(facts.get("physical_assault"))
-        elements["causing_bodily_pain_disease_infirmity"] = eval_conduct(facts.get("physical_injury"))
-        elements["use_of_dangerous_weapon_or_means"] = eval_conduct(facts.get("weapon_or_dangerous_means"))
+        elements["voluntarily_causing_hurt"] = eval_val(facts.get("physical_assault"))
+        elements["causing_bodily_pain_disease_infirmity"] = eval_val(facts.get("physical_injury"))
+        elements["use_of_dangerous_weapon_or_means"] = eval_val(facts.get("weapon_or_dangerous_means"))
 
     elif sec_num == "316":
-        elements["voluntarily_causing_hurt"] = eval_conduct(facts.get("physical_assault"))
-        elements["grievous_hurt_category_satisfied"] = eval_conduct(facts.get("injury_severity") == "grievous")
-        elements["use_of_dangerous_weapon_or_means"] = eval_conduct(facts.get("weapon_or_dangerous_means"))
+        elements["voluntarily_causing_hurt"] = eval_val(facts.get("physical_assault"))
+        elements["grievous_hurt_category_satisfied"] = eval_val(facts.get("injury_severity") == "grievous")
+        elements["use_of_dangerous_weapon_or_means"] = eval_val(facts.get("weapon_or_dangerous_means"))
 
     elif sec_num == "317":
-        elements["voluntarily_causing_hurt"] = eval_conduct(facts.get("physical_assault"))
-        elements["causing_bodily_pain_disease_infirmity"] = eval_conduct(facts.get("physical_injury"))
-        elements["extortion_coercion_intent"] = eval_conduct(facts.get("threats"))
+        elements["voluntarily_causing_hurt"] = eval_val(facts.get("physical_assault"))
+        elements["causing_bodily_pain_disease_infirmity"] = eval_val(facts.get("physical_injury"))
+        elements["extortion_coercion_intent"] = eval_val(facts.get("threats"))
 
     elif sec_num == "318":
-        elements["voluntarily_causing_hurt"] = eval_conduct(facts.get("physical_assault"))
-        elements["grievous_hurt_category_satisfied"] = eval_conduct(facts.get("injury_severity") == "grievous")
-        elements["extortion_coercion_intent"] = eval_conduct(facts.get("threats"))
+        elements["voluntarily_causing_hurt"] = eval_val(facts.get("physical_assault"))
+        elements["grievous_hurt_category_satisfied"] = eval_val(facts.get("injury_severity") == "grievous")
+        elements["extortion_coercion_intent"] = eval_val(facts.get("threats"))
 
     elif sec_num in ["363", "364"]:
-        # Rape elements: penetration + against will or without consent or under 16
-        elements["sexual_intercourse_penetration"] = eval_conduct(facts.get("penetration"))
-        
+        elements["sexual_intercourse_penetration"] = eval_val(facts.get("penetration"))
         is_u16 = None
         if facts.get("victim_age") is not None:
             is_u16 = facts["victim_age"] < 16
         else:
             is_u16 = facts.get("is_minor")
-            
-        elements["against_will_or_without_consent_or_under_16"] = eval_context(
+        elements["against_will_or_without_consent_or_under_16"] = eval_val(
             facts.get("against_will") is True or 
             facts.get("consent") is False or 
             is_u16 is True or 
@@ -726,18 +990,15 @@ def evaluate_legal_elements(sec_num: str, facts: dict) -> Tuple[dict, str]:
         )
 
     elif sec_num == "364A":
-        elements["incestuous_sexual_intercourse"] = eval_conduct(
+        elements["incestuous_sexual_intercourse"] = eval_val(
             facts.get("penetration") is True or facts.get("intercourse") is True
         )
-        elements["incestuous_relationship"] = eval_context(facts.get("offender_relationship") in ["parent", "relative"])
+        elements["incestuous_relationship"] = eval_val(facts.get("offender_relationship") in ["parent", "relative"])
 
     elif sec_num == "365B":
-        # Grave sexual abuse: sexual touching or act, does not amount to rape
-        elements["grave_sexual_conduct"] = eval_conduct(
+        elements["grave_sexual_conduct"] = eval_val(
             facts.get("sexual_touching") is True or facts.get("sexual_contact") is True or facts.get("sexual_act") is True
         )
-        
-        # Verify if it amounts to rape under 363
         is_u16_rape = False
         if facts.get("victim_age") is not None and facts.get("victim_age") < 16:
             is_u16_rape = True
@@ -750,65 +1011,57 @@ def evaluate_legal_elements(sec_num: str, facts: dict) -> Tuple[dict, str]:
             is_u16_rape or 
             facts.get("threats") is True
         )
-        elements["does_not_amount_to_rape"] = eval_conduct(not amounts_to_rape)
+        elements["does_not_amount_to_rape"] = eval_val(not amounts_to_rape)
 
     elif sec_num == "345":
-        elements["sexual_harassment_conduct"] = eval_conduct(
-            facts.get("sexual_harassment") is True or facts.get("sexual_touching") is True or facts.get("sexual_contact") is True or facts.get("threats") is True
+        elements["sexual_harassment_conduct"] = eval_val(
+            facts.get("sexual_harassment") is True or facts.get("sexual_touching") is True or facts.get("sexual_contact") is True or facts.get("sexual_act") is True or facts.get("threats") is True
         )
 
     elif sec_num == "350":
-        # Definition of kidnapping
-        elements["kidnapping_definition_reference"] = eval_context(facts.get("kidnapping"))
+        elements["kidnapping_definition_reference"] = eval_val(facts.get("kidnapping"))
 
     elif sec_num == "351":
-        # Kidnapping from Sri Lanka: kidnapping conduct + taking beyond limits
-        elements["kidnapping_or_abduction_conduct"] = eval_conduct(facts.get("kidnapping") is True or facts.get("abduction") is True)
-        elements["taking_out_of_sri_lanka"] = eval_context(facts.get("online_contact") is not True) # Fallback to context or not online
+        elements["kidnapping_or_abduction_conduct"] = eval_val(facts.get("kidnapping") is True or facts.get("abduction") is True)
+        elements["taking_out_of_sri_lanka"] = eval_val(facts.get("online_contact") is not True)
 
     elif sec_num == "352":
-        # Kidnapping from lawful guardianship: Males < 14, Females < 16
         is_minor_kidnap = None
         if facts.get("victim_sex") == "female":
             is_minor_kidnap = facts["victim_age"] < 16 if facts.get("victim_age") is not None else facts.get("is_minor")
+          # Section 352 uses 14 for males, 16 for females
         elif facts.get("victim_sex") == "male":
             is_minor_kidnap = facts["victim_age"] < 14 if facts.get("victim_age") is not None else facts.get("is_minor")
         else:
             is_minor_kidnap = facts["victim_age"] < 16 if facts.get("victim_age") is not None else facts.get("is_minor")
             
-        elements["victim_minor_under_guardianship"] = eval_context(is_minor_kidnap)
-        elements["taking_or_enticing_from_guardian"] = eval_conduct(facts.get("taking_from_guardian") is True or facts.get("kidnapping") is True)
+        elements["victim_minor_under_guardianship"] = eval_val(is_minor_kidnap)
+        elements["taking_or_enticing_from_guardian"] = eval_val(facts.get("taking_from_guardian") is True or facts.get("kidnapping") is True)
 
     elif sec_num == "353":
-        # Abduction definition: force or deceit
-        elements["compelled_by_force_or_deceit"] = eval_conduct(facts.get("abduction"))
+        elements["compelled_by_force_or_deceit"] = eval_val(facts.get("abduction"))
 
     elif sec_num == "354":
-        # Punishment for kidnapping
-        elements["kidnapping_punishment_reference"] = eval_conduct(facts.get("kidnapping") is True or facts.get("abduction") is True)
+        elements["kidnapping_punishment_reference"] = eval_val(facts.get("kidnapping") is True or facts.get("abduction") is True)
 
     elif sec_num == "355":
-        # Kidnapping or abducting to murder
-        elements["kidnapping_or_abduction_conduct"] = eval_conduct(facts.get("kidnapping") is True or facts.get("abduction") is True)
-        elements["murder_intent"] = eval_context(facts.get("threats")) # Proxy
+        elements["kidnapping_or_abduction_conduct"] = eval_val(facts.get("kidnapping") is True or facts.get("abduction") is True)
+        elements["murder_intent"] = eval_val(facts.get("threats"))
 
     elif sec_num == "356":
-        # Kidnapping or abducting to confine
-        elements["kidnapping_or_abduction_conduct"] = eval_conduct(facts.get("kidnapping") is True or facts.get("abduction") is True)
-        elements["wrongful_confinement_intent"] = eval_conduct(facts.get("confinement"))
+        elements["kidnapping_or_abduction_conduct"] = eval_val(facts.get("kidnapping") is True or facts.get("abduction") is True)
+        elements["wrongful_confinement_intent"] = eval_val(facts.get("confinement"))
 
     elif sec_num == "357":
-        # Kidnapping or abducting female to compel marriage
-        elements["kidnapping_or_abduction_conduct"] = eval_conduct(facts.get("kidnapping") is True or facts.get("abduction") is True)
-        elements["female_victim"] = eval_context(facts.get("victim_sex") == "female")
+        elements["kidnapping_or_abduction_conduct"] = eval_val(facts.get("kidnapping") is True or facts.get("abduction") is True)
+        elements["female_victim"] = eval_val(facts.get("victim_sex") == "female")
 
     elif sec_num == "358":
-        # Kidnapping to subject to grievous hurt or slavery
-        elements["kidnapping_or_abduction_conduct"] = eval_conduct(facts.get("kidnapping") is True or facts.get("abduction") is True)
-        elements["grievous_hurt_or_slavery_intent"] = eval_conduct(facts.get("injury_severity") == "grievous" or facts.get("trafficking") is True)
+        elements["kidnapping_or_abduction_conduct"] = eval_val(facts.get("kidnapping") is True or facts.get("abduction") is True)
+        elements["grievous_hurt_or_slavery_intent"] = eval_val(facts.get("injury_severity") == "grievous" or facts.get("trafficking") is True)
 
     elif sec_num == "358A":
-        elements["forced_labour_or_slavery_conduct"] = eval_conduct(
+        elements["forced_labour_or_slavery_conduct"] = eval_val(
             facts.get("trafficking") is True or facts.get("commercial_exploitation") is True or facts.get("begging") is True
         )
 
@@ -818,83 +1071,70 @@ def evaluate_legal_elements(sec_num: str, facts: dict) -> Tuple[dict, str]:
             is_u21 = facts["victim_age"] < 21
         else:
             is_u21 = facts.get("is_minor")
-        elements["victim_under_21"] = eval_context(is_u21)
-        elements["procuring_conduct"] = eval_conduct(facts.get("commercial_exploitation"))
+        elements["victim_under_21"] = eval_val(is_u21)
+        elements["procuring_conduct"] = eval_val(facts.get("commercial_exploitation"))
 
     elif sec_num == "360B":
-        elements["exploitation_conduct"] = eval_conduct(facts.get("commercial_exploitation") is True or facts.get("sexual_image_material") is True)
-        elements["victim_child"] = eval_context(facts.get("is_minor"))
+        elements["exploitation_conduct"] = eval_val(facts.get("commercial_exploitation") is True or facts.get("sexual_image_material") is True)
+        elements["victim_child"] = eval_val(facts.get("is_minor"))
 
     elif sec_num == "360C":
-        elements["trafficking_conduct"] = eval_conduct(facts.get("trafficking"))
+        elements["trafficking_conduct"] = eval_val(facts.get("trafficking"))
 
     elif sec_num == "360D":
-        elements["adoption_offence_conduct"] = eval_conduct(facts.get("trafficking"))
+        elements["adoption_offence_conduct"] = eval_val(facts.get("trafficking"))
 
     elif sec_num == "360E":
-        elements["soliciting_conduct"] = eval_conduct(facts.get("commercial_exploitation") is True or facts.get("sexual_contact") is True or facts.get("sexual_act") is True)
-        elements["victim_child"] = eval_context(facts.get("is_minor"))
+        elements["soliciting_conduct"] = eval_val(facts.get("commercial_exploitation") is True or facts.get("sexual_contact") is True or facts.get("sexual_act") is True)
+        elements["victim_child"] = eval_val(facts.get("is_minor"))
 
     elif sec_num == "365":
-        elements["unnatural_carnal_intercourse"] = eval_conduct(
+        elements["unnatural_carnal_intercourse"] = eval_val(
             facts.get("unnatural_intercourse") is True or facts.get("sodomy") is True
         )
 
     elif sec_num == "365A":
-        elements["gross_indecency_conduct"] = eval_conduct(facts.get("gross_indecency") is True)
+        elements["gross_indecency_conduct"] = eval_val(facts.get("gross_indecency"))
 
     elif sec_num in ["286A", "286B", "365C"]:
-        elements["obscene_material_conduct"] = eval_conduct(facts.get("sexual_image_material"))
+        elements["obscene_material_conduct"] = eval_val(facts.get("sexual_image_material"))
         if sec_num == "286B":
-            elements["computer_or_online_means"] = eval_context(facts.get("online_contact"))
+            elements["computer_or_online_means"] = eval_val(facts.get("online_contact"))
 
     elif sec_num == "286C":
-        elements["premises_used_for_abuse"] = eval_conduct(facts.get("confinement") is True or facts.get("sexual_act") is True or facts.get("physical_assault") is True)
-
-    elif sec_num == "288":
-        elements["begging_conduct"] = eval_conduct(facts.get("begging"))
-        elements["victim_child"] = eval_context(facts.get("is_minor"))
-
-    elif sec_num == "288A":
-        elements["employ_child_as_procurer"] = eval_conduct(facts.get("employ_child_as_procurer") is True)
-        elements["victim_child"] = eval_context(facts.get("is_minor"))
-
-    elif sec_num == "288B":
-        elements["traffic_restricted_articles"] = eval_conduct(facts.get("traffic_restricted_articles") is True)
-        elements["victim_child"] = eval_context(facts.get("is_minor"))
+        elements["premises_used_for_abuse"] = eval_val(facts.get("confinement") is True or facts.get("sexual_act") is True or facts.get("physical_assault") is True)
+        elements["owner_occupier_reporting_duty"] = eval_val(facts.get("premises_reporting_duty"))
 
     elif sec_num == "483":
-        elements["threat_to_cause_alarm_or_force_omission"] = eval_conduct(
+        elements["threat_to_cause_alarm_or_force_omission"] = eval_val(
             facts.get("threat_to_keep_silent") is True or facts.get("threat_of_harm") is True or facts.get("threats") is True
         )
-        elements["criminal_intimidation_threat"] = eval_conduct(
+        elements["criminal_intimidation_threat"] = eval_val(
             facts.get("threat_of_harm") is True or facts.get("threats") is True
         )
 
     elif sec_num == "486":
-        elements["criminal_intimidation_punishment_trigger"] = eval_conduct(
+        elements["criminal_intimidation_punishment_trigger"] = eval_val(
             facts.get("threat_to_keep_silent") is True or facts.get("threat_of_harm") is True or facts.get("threats") is True
         )
-        elements["criminal_intimidation_threat"] = eval_conduct(
+        elements["criminal_intimidation_threat"] = eval_val(
             facts.get("threat_of_harm") is True or facts.get("threats") is True
         )
 
     elif sec_num == "39":
-        # NCPA Act child abuse broad definition
-        elements["child_abuse_definition_reference"] = eval_context(facts.get("is_minor"))
+        elements["child_abuse_definition_reference"] = eval_val(facts.get("is_minor"))
 
     elif sec_num == "33":
-        # NCPA power to enter/inspect
-        elements["premises_inspection_reference"] = eval_context(facts.get("confinement") is True or facts.get("custody_or_care") is True)
+        elements["premises_inspection_reference"] = eval_val(facts.get("confinement") is True or facts.get("custody_or_care") is True)
 
     else:
         elements["general_offence_elements_satisfied"] = "SATISFIED"
 
-    status = "strong_match"
+    status = "APPLICABLE"
     if any(val == "NOT_SATISFIED" for val in elements.values()):
-        status = "rejected"
+        status = "REJECTED"
     elif any(val == "UNKNOWN" for val in elements.values()):
-        status = "potential_match"
+        status = "POTENTIALLY_APPLICABLE"
         
     return elements, status
 
@@ -1104,32 +1344,75 @@ def retrieve_relevant_laws(query: str, abuse_category: str = None, language: str
     sections = load_legal_sections()
     query_lower = query.lower()
     
-    # Classify primary and secondary categories from query
+    # Classify primary category from query (strictly single identifying category)
     primary_category, secondary_categories = classify_abuse_categories(query)
+    secondary_categories = []
     if abuse_category and abuse_category.strip():
-        req_cat = abuse_category.lower().strip()
-        if req_cat != primary_category and req_cat not in secondary_categories:
-            secondary_categories.insert(0, primary_category)
-            primary_category = req_cat
+        primary_category = abuse_category.lower().strip()
 
     # 1. Bilingual Structured Fact Extraction
     facts = extract_all_structured_facts(query, language)
     extracted_canonical_facts = extract_canonical_facts(query, language)
     victim_age = facts["victim_age"]
+    
+    # 2. Derive victim_under_18
+    if victim_age is not None:
+        victim_under_18 = True if victim_age < 18 else False
+    else:
+        victim_under_18 = "UNKNOWN"
+        
     fallback_mode = False
 
     if not extracted_canonical_facts and primary_category != "general_child_protection":
         fallback_mode = True
 
-    if not extracted_canonical_facts and primary_category == "general_child_protection":
-        return LegalRetrievalResult([], incident_summary=generate_incident_summary(facts, language), facts=[], applicable_laws=[], potential_laws=[], rejected_laws=[], additional_information_needed=[])
+    # Define the insufficient_law placeholder
+    insufficient_law = RelevantLaw(
+        section="INSUFFICIENT_FACTS",
+        law_name="INSUFFICIENT_FACTS",
+        law_type="primary",
+        title="INSUFFICIENT_FACTS",
+        title_en="INSUFFICIENT_FACTS",
+        title_si="INSUFFICIENT_FACTS",
+        simple_explanation="There is not enough information to identify any specific child-abuse offence.",
+        simple_explanation_en="There is not enough information to identify any specific child-abuse offence.",
+        simple_explanation_si="ප්‍රමාණවත් තොරතුරු නොමැත.",
+        reporting_guidance="Please provide more details about the incident.",
+        relevance_score=0.0,
+        explanation_variant="",
+        matched_age_rule="",
+        matched_legal_basis="",
+        related_provisions=[]
+    )
+
+    # If no child-abuse-related structured facts are found, return INSUFFICIENT_FACTS placeholder
+    if not extracted_canonical_facts:
+        print("--- DEBUG RETRIEVAL ---")
+        print(f"Detected Language: {language}")
+        print("Extracted Canonical Facts: None")
+        print(f"Abuse Category: {primary_category}")
+        print("Rejected: Insufficient facts extracted from the query.")
+        print("-----------------------")
+        return LegalRetrievalResult(
+            [insufficient_law],
+            incident_summary=generate_incident_summary(facts, language),
+            facts=[],
+            applicable_laws=[{
+                "section": "INSUFFICIENT_FACTS",
+                "title": "INSUFFICIENT_FACTS",
+                "status": "strong_match",
+                "matched_elements": [],
+                "evidence": [],
+                "reason": "Insufficient facts"
+            }],
+            potential_laws=[],
+            rejected_laws=[],
+            additional_information_needed=[]
+        )
 
     BASE_THRESHOLD = 0.35 if fallback_mode else (0.15 if language == "si" else 0.25)
 
-
     candidate_sections = []
-    
-    # Track rejected sections for final response
     rejected_laws_list = []
     additional_info_list = []
 
@@ -1150,9 +1433,24 @@ def retrieve_relevant_laws(query: str, abuse_category: str = None, language: str
         else:
             return "standard_offence", "General"
 
+    # Compile the set of allowed sections based on classified categories
+    all_query_categories = [primary_category] + secondary_categories
+    allowed_sections = set()
+    for cat in all_query_categories:
+        if cat in CHILD_ABUSE_ALLOWED_SECTIONS:
+            allowed_sections.update(CHILD_ABUSE_ALLOWED_SECTIONS[cat])
+
+    # We collect all candidates evaluated to print in the debug log
+    debug_evaluations = []
+
     for section in sections:
         sec_num = str(getattr(section, 'section_number', '')).strip()
         sec_id = getattr(section, 'id', '')
+        
+        # Category Gating
+        if allowed_sections and sec_num not in allowed_sections:
+            continue
+
         req_rules = SECTION_CANONICAL_REQUIREMENTS.get(sec_num, {})
         req_all_display = req_rules.get("required_facts_all", getattr(section, 'required_facts_all', []))
         req_any_display = req_rules.get("required_facts_any", getattr(section, 'required_facts_any', getattr(section, 'required_facts', [])))
@@ -1166,27 +1464,87 @@ def retrieve_relevant_laws(query: str, abuse_category: str = None, language: str
             if not is_supporting_law_relevant(sec_id, query, primary_category):
                 continue
 
-        # Evaluate legal elements satisfaction and contradiction
-        elements, status = evaluate_legal_elements(sec_num, facts)
+        # Get age metadata for provision
+        meta = get_provision_age_metadata(sec_id, facts)
+        is_child_specific = meta["child_only_condition"] or meta["max_age"] is not None
         
+        # Age-routing / gating logic
+        age_gate_rejection_reason = None
+        
+        if victim_under_18 is False:
+            if is_child_specific:
+                max_age_val = meta["max_age"] or 18
+                age_gate_rejection_reason = f"Victim does not satisfy the statutory under-{max_age_val} requirement."
+        elif victim_age is not None:
+            if meta["max_age"] is not None and victim_age >= meta["max_age"]:
+                age_gate_rejection_reason = f"Victim does not satisfy the statutory under-{meta['max_age']} requirement."
+            elif meta["min_age"] is not None and victim_age < meta["min_age"]:
+                age_gate_rejection_reason = f"Victim does not satisfy the statutory minimum age {meta['min_age']} requirement."
+
+        if age_gate_rejection_reason is not None:
+            rejected_laws_list.append({
+                "section": sec_num,
+                "reason": age_gate_rejection_reason
+            })
+            debug_evaluations.append({
+                "section_num": sec_num,
+                "status": "REJECTED",
+                "elements": {"age_restriction": "NOT_SATISFIED"}
+            })
+            continue
+
+        facts_for_eval = facts.copy()
+        facts_for_eval["is_minor"] = victim_under_18
+
+        # Evaluate legal elements satisfaction and contradiction
+        elements, status = evaluate_legal_elements(sec_num, facts_for_eval)
+        
+        # General age eligibility layer adjustments for UNKNOWN age cases
+        if is_child_specific and victim_under_18 == "UNKNOWN":
+            if status == "APPLICABLE":
+                status = "POTENTIALLY_APPLICABLE"
+            
+            # Determine appropriate age element to report as missing
+            age_el = "victim_child"
+            if sec_num == "308A":
+                age_el = "victim_under_18"
+            elif sec_num == "308":
+                age_el = "victim_under_12"
+            elif sec_num == "352":
+                age_el = "victim_minor_under_guardianship"
+            elif sec_num == "360A":
+                age_el = "victim_under_21"
+            
+            elements[age_el] = "UNKNOWN"
+
         # Double check legacy check_fact_compatibility (passing status)
         is_fact_ok, matched_facts, missing_facts, fact_reason = check_fact_compatibility(
             section, query_lower, primary_category, secondary_categories, extracted_canonical_facts, victim_age, fallback_mode, status=status
         )
         
-        # If legacy compatibility check fails, let's mark it rejected or potential based on whether elements are contradicted
         if not is_fact_ok:
-            if status != "rejected":
-                status = "rejected"
+            if status != "REJECTED":
+                status = "REJECTED"
                 
         # If status is rejected, log to rejected list
-        if status == "rejected":
-            rejected_reason = fact_reason if not is_fact_ok else "Mandatory legal elements or factual prerequisites were not satisfied."
+        if status == "REJECTED":
+            rejected_reason = fact_reason if not is_fact_ok else "Mandatory statutory elements or factual prerequisites were not satisfied."
             rejected_laws_list.append({
                 "section": sec_num,
                 "reason": rejected_reason
             })
+            debug_evaluations.append({
+                "section_num": sec_num,
+                "status": "REJECTED",
+                "elements": elements
+            })
             continue
+
+        debug_evaluations.append({
+            "section_num": sec_num,
+            "status": status,
+            "elements": elements
+        })
 
         candidate_sections.append({
             "section": section,
@@ -1199,9 +1557,24 @@ def retrieve_relevant_laws(query: str, abuse_category: str = None, language: str
             "status": status
         })
 
-    # If no candidate sections, we return empty LegalRetrievalResult
+    # If no candidate sections, we return INSUFFICIENT_FACTS placeholder
     if not candidate_sections:
-        return LegalRetrievalResult([], incident_summary=generate_incident_summary(facts, language), facts=[], applicable_laws=[], potential_laws=[], rejected_laws=rejected_laws_list, additional_information_needed=[])
+        return LegalRetrievalResult(
+            [insufficient_law],
+            incident_summary=generate_incident_summary(facts, language),
+            facts=[],
+            applicable_laws=[{
+                "section": "INSUFFICIENT_FACTS",
+                "title": "INSUFFICIENT_FACTS",
+                "status": "strong_match",
+                "matched_elements": [],
+                "evidence": [],
+                "reason": "Insufficient facts"
+            }],
+            potential_laws=[],
+            rejected_laws=rejected_laws_list,
+            additional_information_needed=[]
+        )
 
     try:
         model = get_model()
@@ -1228,7 +1601,6 @@ def retrieve_relevant_laws(query: str, abuse_category: str = None, language: str
         similarities = np.dot(section_norms, query_norm.T).flatten()
 
         scored_candidates = []
-        all_query_categories = [primary_category] + secondary_categories
 
         for i, raw_sim in enumerate(similarities):
             item = candidate_sections[i]
@@ -1240,10 +1612,10 @@ def retrieve_relevant_laws(query: str, abuse_category: str = None, language: str
 
             # Calculate score using exact element status tiers
             raw_sim = float(raw_sim)
-            if status == "strong_match":
+            if status == "APPLICABLE":
                 final_score = 0.90 + 0.10 * raw_sim
                 match_level = "EXACT"
-            elif status == "potential_match":
+            elif status == "POTENTIALLY_APPLICABLE":
                 satisfied_count = sum(1 for val in elements.values() if val == "SATISFIED")
                 total_elements = len(elements)
                 element_ratio = satisfied_count / total_elements if total_elements > 0 else 1.0
@@ -1260,13 +1632,16 @@ def retrieve_relevant_laws(query: str, abuse_category: str = None, language: str
             # Apply strict role-based penalties
             role = getattr(section, 'law_role', get_section_role(section.title or "", section.simple_explanation))
             if role == "punishment":
-                penalty = 0.02
-            elif role == "definition":
-                penalty = 0.10
-            elif role == "procedure":
                 penalty = 0.05
+            elif role == "definition":
+                penalty = 0.15
+            elif role == "procedure":
+                penalty = 0.20
+            elif role == "supporting" or getattr(section, "law_type", "primary") == "supporting":
+                penalty = 0.25
             else:
                 penalty = 0.0
+                
             final_score = max(0.0, min(final_score - penalty, 1.0))
 
             scored_candidates.append({
@@ -1286,8 +1661,22 @@ def retrieve_relevant_laws(query: str, abuse_category: str = None, language: str
                 "status": status
             })
 
-        scored_candidates.sort(key=lambda x: x["final_score"], reverse=True)
-        top_score = scored_candidates[0]["final_score"] if scored_candidates else 0.0
+        # Rank provisions by legal role first, then by final score within each tier (Requirement 7 & 8)
+        def get_tier_number(role: str) -> int:
+            if role == "offence":
+                return 1
+            if role == "punishment":
+                return 2
+            if role == "definition":
+                return 3
+            if role in ["procedure", "supporting"]:
+                return 4
+            return 1
+
+        scored_candidates.sort(key=lambda x: (get_tier_number(x["role"]), -x["final_score"]))
+        
+        # top_score should be the highest overall score before tier grouping
+        top_score = max(x["final_score"] for x in scored_candidates) if scored_candidates else 0.0
         
         accepted_sections = []
         accepted_group_ids = set()
@@ -1323,12 +1712,26 @@ def retrieve_relevant_laws(query: str, abuse_category: str = None, language: str
                 accepted_sections.append((item["final_score"], section, item["exp_variant"], item["age_rule"], item["elements"], item["status"]))
 
         # Check if there are no applicable and potential laws to return
-        has_applicable = any(s[5] == "strong_match" for s in accepted_sections)
-        has_potential = any(s[5] == "potential_match" for s in accepted_sections)
+        has_applicable = any(s[5] == "APPLICABLE" for s in accepted_sections)
+        has_potential = any(s[5] == "POTENTIALLY_APPLICABLE" for s in accepted_sections)
         
         if not has_applicable and not has_potential:
-            # Return empty / insufficient-information result
-            return LegalRetrievalResult([], incident_summary=generate_incident_summary(facts, language), facts=[], applicable_laws=[], potential_laws=[], rejected_laws=rejected_laws_list, additional_information_needed=[])
+            return LegalRetrievalResult(
+                [insufficient_law],
+                incident_summary=generate_incident_summary(facts, language),
+                facts=[],
+                applicable_laws=[{
+                    "section": "INSUFFICIENT_FACTS",
+                    "title": "INSUFFICIENT_FACTS",
+                    "status": "strong_match",
+                    "matched_elements": [],
+                    "evidence": [],
+                    "reason": "Insufficient facts"
+                }],
+                potential_laws=[],
+                rejected_laws=rejected_laws_list,
+                additional_information_needed=[]
+            )
 
         # Group parent-child structure
         grouped_results = []
@@ -1382,7 +1785,7 @@ def retrieve_relevant_laws(query: str, abuse_category: str = None, language: str
             structured_record = {
                 "section": sec_num,
                 "title": english_title,
-                "status": "strong_match" if status == "strong_match" else "potential_match",
+                "status": "strong_match" if status == "APPLICABLE" else "potential_match",
                 "matched_elements": matched_el_list,
                 "evidence": ev_list,
                 "reason": reason_str,
@@ -1390,7 +1793,7 @@ def retrieve_relevant_laws(query: str, abuse_category: str = None, language: str
                 "source_version": getattr(section, "source_version", "1.0.0")
             }
 
-            if status == "strong_match":
+            if status == "APPLICABLE":
                 applicable_laws_list.append(structured_record)
             else:
                 potential_laws_list.append(structured_record)
@@ -1464,6 +1867,24 @@ def retrieve_relevant_laws(query: str, abuse_category: str = None, language: str
                 if not is_secondary:
                     grouped_results.append(law_obj)
 
+        # 4. Bilingual Development/Debug Retrieval Log (Requirement 13)
+        print("\n" + "="*50)
+        print("DEVELOPMENT/DEBUG RETRIEVAL LOG")
+        print(f"Detected Language: {language}")
+        print(f"Extracted Canonical Facts: {extracted_canonical_facts}")
+        print(f"Abuse Category: {primary_category} (Secondary: {secondary_categories})")
+        print(f"FAISS Candidate Provisions (before element gating): {[s.section_number for s in sections]}")
+        print("Statutory-Element Evaluation for Candidates:")
+        for cand in debug_evaluations:
+            print(f"  Section {cand['section_num']}: Status={cand['status']}, Elements={cand['elements']}")
+        print("Rejected Provisions:")
+        for rej in rejected_laws_list:
+            print(f"  Section {rej['section']}: Reason={rej['reason']}")
+        print("Final Ranked Laws:")
+        for score, section, variant, age_rule, elements, status in accepted_sections:
+            print(f"  Section {section.section_number}: Score={score:.3f}, Status={status}")
+        print("="*50 + "\n")
+
         # Generate structured facts list
         facts_list = []
         for fact_key, val in facts.items():
@@ -1476,10 +1897,6 @@ def retrieve_relevant_laws(query: str, abuse_category: str = None, language: str
                 })
 
         incident_summary_val = generate_incident_summary(facts, language)
-
-        print(f"FINAL RETURNED LAWS COUNT: {len(grouped_results)}")
-        for g in grouped_results:
-            print(f"  -> Section {g.section}: {g.title_en} (Variant: {g.explanation_variant}, Age Rule: {g.matched_age_rule}, Score: {g.relevance_score})")
 
         return LegalRetrievalResult(
             grouped_results,

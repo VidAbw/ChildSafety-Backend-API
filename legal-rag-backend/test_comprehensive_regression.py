@@ -33,7 +33,7 @@ def run_tests():
             "query": "A stranger hit a 10-year-old child on the street, causing minor swelling.",
             "language": "en",
             "expect_present": ["314"],
-            "expect_absent": ["308A"] # Should NOT be applicable or potential because stranger has no custody/care!
+            "expect_absent": ["308A"]
         },
         {
             "id": 4,
@@ -57,7 +57,7 @@ def run_tests():
             "query": "The child was crying and begging his father for food because they had nothing to eat inside the house.",
             "language": "en",
             "expect_present": ["308A"],
-            "expect_absent": ["288"] # Section 288 is begging/alms, must NOT be matched!
+            "expect_absent": ["288"]
         },
         {
             "id": 7,
@@ -73,7 +73,7 @@ def run_tests():
             "query": "A relative touched a child inappropriately on the private parts, but there was no sexual intercourse or penetration.",
             "language": "en",
             "expect_present": ["365B"],
-            "expect_absent": ["363", "364"] # Rape requires penetration, which is explicitly negated!
+            "expect_absent": ["363", "364"]
         },
         {
             "id": 9,
@@ -89,7 +89,7 @@ def run_tests():
             "query": "A father slapped his child as a punishment, but there were no injuries or bodily pain at all.",
             "language": "en",
             "expect_present": [],
-            "expect_absent": ["314", "315", "316"] # Slap with no injury or pain must not match hurt sections!
+            "expect_absent": ["314", "315", "316"]
         },
         {
             "id": 11,
@@ -113,7 +113,7 @@ def run_tests():
             "query": "An 18-year-old victim was beaten by his guardian causing injuries.",
             "language": "en",
             "expect_present": [],
-            "expect_absent": ["308A"] # Must NOT match because the victim is 18 (not under 18)!
+            "expect_absent": ["308A"]
         },
         {
             "id": 14,
@@ -132,7 +132,7 @@ def run_tests():
             "expect_absent": ["308A", "314", "363", "288"]
         },
         {
-            "id": 17,
+            "id": 16,
             "name": "Unseen Scenario - Touching & Threats (English)",
             "query": "A 13-year-old child was repeatedly touched inappropriately by a known adult. The adult threatened the child to keep silent and threatened harm if the child tells anyone, causing fear and psychological distress. No explicit intercourse or penetration was stated.",
             "language": "en",
@@ -140,12 +140,76 @@ def run_tests():
             "expect_absent": ["364A", "365", "365A", "288A", "288B"]
         },
         {
-            "id": 18,
+            "id": 17,
             "name": "Unseen Scenario - Touching & Threats (Sinhala)",
             "query": "වයස අවුරුදු 13ක දරුවෙකු, දන්නා වැඩිහිටියෙකු විසින් නැවත නැවතත් නුසුදුසු ලෙස ස්පර්ශ කරන ලදී. කිසිවෙකුට නොකියන ලෙස සහ පැවසුවහොත් හානියක් කරන බවට එම වැඩිහිටියා දරුවාට තර්ජනය කර ඇත. මේ හේතුවෙන් දරුවා බියට හා මානසික පීඩාවට පත්ව ඇත. කිසිදු ලිංගික සංසර්ගයක් හෝ ඇතුල් කිරීමක් ප්‍රකාශ කර නොමැත.",
             "language": "si",
             "expect_present": ["365B", "345", "483"],
             "expect_absent": ["364A", "365", "365A", "288A", "288B"]
+        },
+        {
+            "id": 18,
+            "name": "Grievous Hurt Gating - No grievous indicators (English)",
+            "query": "A caregiver hit a 10-year-old child, causing simple swelling and simple pain.",
+            "language": "en",
+            "expect_present": ["308A", "314"],
+            "expect_absent": ["313", "316", "318"]
+        },
+        {
+            "id": 19,
+            "name": "Grievous Hurt Gating - Grievous indicators present (English)",
+            "query": "A caregiver hit a 10-year-old child, fracturing the child's arm.",
+            "language": "en",
+            "expect_present": ["313"],
+            "expect_absent": ["288", "316", "318"]
+        },
+        {
+            "id": 20,
+            "name": "Online / Material Abuse Negation (English)",
+            "query": "A stranger touched a child, but did not take any obscene photos or videos, and did not share anything online.",
+            "language": "en",
+            "expect_present": ["365B"],
+            "expect_absent": ["286A", "286B", "365C"]
+        },
+        {
+            "id": 21,
+            "name": "Begging Conduct Gating (English)",
+            "query": "A caregiver severely hit a child, but the child was not begging or soliciting alms.",
+            "language": "en",
+            "expect_present": ["308A", "314"],
+            "expect_absent": ["288"]
+        },
+        {
+            "id": 22,
+            "name": "Incest Relationship Gating (English)",
+            "query": "A stranger sexually assaulted a child.",
+            "language": "en",
+            "expect_present": ["365B"],
+            "expect_absent": ["364A"]
+        },
+        {
+            "id": 23,
+            "name": "Kidnapping Conduct Gating (English)",
+            "query": "A parent hit a child at home, but there was no kidnapping, abduction, or taking away of the child.",
+            "language": "en",
+            "expect_present": ["308A", "314"],
+            "expect_absent": ["350", "352", "354", "358"]
+        },
+        {
+            "id": 24,
+            "name": "Sinhala-English Parity Pair - Kidnapping (English)",
+            "query": "A stranger enticed and took away a 10-year-old girl from her school without her parents' knowledge.",
+            "language": "en",
+            "expect_present": ["352"],
+            "expect_absent": ["308A"]
+        },
+        {
+            "id": 25,
+            "name": "Sinhala-English Parity Pair - Kidnapping (Sinhala)",
+            "query": "අමුත්තෙක් වයස අවුරුදු 10ක ගැහැණු ළමයෙකු ඇයගේ දෙමාපියන්ට නොදන්වා ඇයගේ පාසලෙන් රවටා රැගෙන ගියේය.",
+            "language": "si",
+            "expect_present": ["352"],
+            "expect_absent": ["308A"]
         }
     ]
 
