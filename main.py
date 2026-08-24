@@ -30,6 +30,21 @@ app.include_router(audio_router, prefix="/api/audio", tags=["Audio Guardian"])
 # Connect the new Safety Alert Pipeline API (v1)
 app.include_router(api_v1_router, prefix="/api/v1")
 
+# Connect the Legal RAG Backend routers
+try:
+    import sys
+    import os
+    rag_backend_path = os.path.join(os.path.dirname(__file__), "legal-rag-backend")
+    if rag_backend_path not in sys.path:
+        sys.path.insert(0, rag_backend_path)
+    from app.routers.rag import router as rag_router
+    from app.routers.legal import router as legal_router
+    app.include_router(rag_router)
+    app.include_router(legal_router)
+except Exception as e:
+    logging.warning(f"Could not load Legal RAG routers: {e}")
+
+
 
 @app.get("/")
 def health_check():

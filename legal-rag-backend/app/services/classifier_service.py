@@ -1,5 +1,13 @@
+# pyrefly: ignore [missing-import]
 from typing import Tuple, List
-from app.services.fact_extraction_service import extract_all_structured_facts
+
+try:
+    from app.services.fact_extraction_service import extract_all_structured_facts
+except (ImportError, ModuleNotFoundError):
+    try:
+        from .fact_extraction_service import extract_all_structured_facts
+    except (ImportError, ModuleNotFoundError, ValueError):
+        from fact_extraction_service import extract_all_structured_facts
 
 def classify_abuse_categories(text: str) -> Tuple[str, List[str]]:
     text_lower = text.lower()
