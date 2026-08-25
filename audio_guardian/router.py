@@ -159,7 +159,7 @@ async def upload_audio_chunk(
 
     # ── REGISTRATION INTERCEPT ───────────────────────────────────
     # If armed, use this chunk as a voice registration instead of threat detection
-    global _register_next_for
+    global _register_next_for, _last_result
     if _register_next_for:
         reg_name = _register_next_for["person_name"]
         reg_role = _register_next_for["role"]
@@ -298,7 +298,6 @@ async def upload_audio_chunk(
     }
 
     # Store as last result so the frontend can poll /last-result
-    global _last_result
     _last_result = result
 
     return result
