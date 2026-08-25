@@ -7,10 +7,17 @@ import faiss
 import numpy as np
 from sentence_transformers import SentenceTransformer
 
-from app.schemas.legal_schema import LegalSection
-from app.schemas.rag_schema import RelevantLaw
-from app.services.classifier_service import classify_abuse_categories
-from app.services.fact_extraction_service import extract_canonical_facts, extract_victim_age, extract_all_structured_facts as extract_all_structured_facts_imported
+try:
+    from ..schemas.legal_schema import LegalSection
+    from ..schemas.rag_schema import RelevantLaw
+    from .classifier_service import classify_abuse_categories
+    from .fact_extraction_service import extract_canonical_facts, extract_victim_age, extract_all_structured_facts as extract_all_structured_facts_imported
+except (ImportError, ValueError):
+    from app.schemas.legal_schema import LegalSection
+    from app.schemas.rag_schema import RelevantLaw
+    from app.services.classifier_service import classify_abuse_categories
+    from app.services.fact_extraction_service import extract_canonical_facts, extract_victim_age, extract_all_structured_facts as extract_all_structured_facts_imported
+
 
 class LegalRetrievalResult(list):
     def __init__(self, items, incident_summary="", facts=None, applicable_laws=None, potential_laws=None, rejected_laws=None, additional_information_needed=None):

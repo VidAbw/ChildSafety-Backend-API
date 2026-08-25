@@ -1,3 +1,4 @@
+# pyrefly: ignore [missing-import]
 from app.config import config
 from app.schemas.legal_schema import LegalSection
 from typing import List, Dict

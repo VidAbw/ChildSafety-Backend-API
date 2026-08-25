@@ -1,5 +1,10 @@
+# pyrefly: ignore [missing-import]
 from fastapi import APIRouter
-from app.services.supabase_service import get_reporting_contacts
+try:
+    from ..services.supabase_service import get_reporting_contacts
+except (ImportError, ValueError):
+    from app.services.supabase_service import get_reporting_contacts
+
 
 router = APIRouter()
 
