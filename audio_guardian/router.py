@@ -71,18 +71,34 @@ def get_registered_mfcc_profiles() -> list:
 # Endpoints
 # ──────────────────────────────────────────────────────────────
 @router.get("/status")
-def get_audio_listener_status() -> dict:
+def get_audio_listener_status(user_email: str = None) -> dict:
     config = get_config()
     try:
-        profiles = db.table("registered_voice_profiles") \
-            .select("id, person_name, role, is_active, last_verified") \
-            .eq("is_active", True) \
-            .execute()
-        profile_list = profiles.data or []
+        query = db.table("registered_voice_profiles") \
+            .select("id, person_name, role, is_active, last_verified, user_email") \
+            .eq("is_active", True)
+        if user_email and user_email.strip():
+            try:
+                filtered_query = query.eq("user_email", user_email.strip().lower()).execute()
+                profile_list = filtered_query.data or []
+            except Exception:
+                profiles = query.execute()
+                profile_list = profiles.data or []
+        else:
+            profiles = query.execute()
+            profile_list = profiles.data or []
         profile_count = len(profile_list)
     except Exception:
-        profile_list = []
-        profile_count = 0
+        try:
+            profiles = db.table("registered_voice_profiles") \
+                .select("id, person_name, role, is_active, last_verified") \
+                .eq("is_active", True) \
+                .execute()
+            profile_list = profiles.data or []
+            profile_count = len(profile_list)
+        except Exception:
+            profile_list = []
+            profile_count = 0
 
     return {
         "backend": "online",
@@ -309,17 +325,18 @@ async def register_parent_voice(
     file: UploadFile = File(...),
     parent_name: str = Form("Parent"),
     role: str = Form("parent"),
+    user_email: str = Form(None),
 ):
     """
     Registers a voice profile by:
       1. Saving the WAV file locally (backward compat)
       2. Extracting an MFCC matrix
-      3. Inserting the matrix into Supabase registered_voice_profiles
+      3. Inserting the matrix into Supabase registered_voice_profiles with user_email
       4. Updating the local config with the parent name
     """
     import librosa
     contents = await file.read()
-    logger.info(f"register-parent: received file '{file.filename}', size={len(contents)} bytes, content_type={file.content_type}")
+    logger.info(f"register-parent: received file '{file.filename}', size={len(contents)} bytes, content_type={file.content_type}, user_email={user_email}")
 
     # Save WAV locally as fallback
     with open(PARENT_PROFILE_PATH, "wb") as f:
@@ -336,30 +353,48 @@ async def register_parent_voice(
     # Convert numpy array to a plain nested list for JSON storage
     mfcc_list = mfcc_matrix.tolist()
 
-    # Deactivate any previous profiles for this person before inserting new one
+    # Deactivate any previous profiles for this person under this email before inserting new one
     try:
-        db.table("registered_voice_profiles") \
-            .update({"is_active": False}) \
-            .eq("person_name", parent_name) \
-            .execute()
+        query = db.table("registered_voice_profiles").update({"is_active": False}).eq("person_name", parent_name)
+        if user_email and user_email.strip():
+            try:
+                query.eq("user_email", user_email.strip().lower()).execute()
+            except Exception:
+                query.execute()
+        else:
+            query.execute()
     except Exception as e:
         logger.warning(f"Could not deactivate old profiles: {e}")
 
     # Insert new voice profile into Supabase
+    profile_data = {
+        "person_name": parent_name,
+        "role": role,
+        "dtw_feature_matrix": mfcc_list,
+        "is_active": True,
+    }
+    if user_email and user_email.strip():
+        profile_data["user_email"] = user_email.strip().lower()
+
     try:
-        db.table("registered_voice_profiles").insert({
-            "person_name": parent_name,
-            "role": role,
-            "dtw_feature_matrix": mfcc_list,
-            "is_active": True,
-        }).execute()
-        logger.info(f"Voice profile for '{parent_name}' saved to Supabase.")
+        db.table("registered_voice_profiles").insert(profile_data).execute()
+        logger.info(f"Voice profile for '{parent_name}' (user: {user_email}) saved to Supabase.")
     except Exception as e:
-        logger.error(f"Supabase insert failed: {e}")
-        return {
-            "success": False,
-            "error": f"Database error saving profile: {str(e)}",
-        }
+        logger.warning(f"Insert with user_email failed: {e}. Retrying without user_email...")
+        try:
+            db.table("registered_voice_profiles").insert({
+                "person_name": parent_name,
+                "role": role,
+                "dtw_feature_matrix": mfcc_list,
+                "is_active": True,
+            }).execute()
+            logger.info(f"Voice profile for '{parent_name}' saved to Supabase (fallback).")
+        except Exception as e2:
+            logger.error(f"Supabase insert failed: {e2}")
+            return {
+                "success": False,
+                "error": f"Database error saving profile: {str(e2)}",
+            }
 
     # Update local config
     config = get_config()
@@ -371,40 +406,76 @@ async def register_parent_voice(
         "message": f"Voice profile for '{parent_name}' registered successfully.",
         "parent_name": parent_name,
         "role": role,
+        "user_email": user_email,
         "mfcc_shape": list(mfcc_matrix.shape),
     }
 
 
 @router.get("/profiles")
-def list_voice_profiles() -> dict:
+def list_voice_profiles(user_email: str = None) -> dict:
     """
-    Returns all active registered voice profiles (without the large MFCC matrix).
-    Used by the frontend to show who is registered.
+    Returns registered voice profiles (without the large MFCC matrix).
+    If user_email is provided, filters by user_email where available.
     """
     try:
+        if user_email and user_email.strip():
+            try:
+                result = db.table("registered_voice_profiles") \
+                    .select("id, person_name, role, is_active, created_at, last_verified, user_email") \
+                    .eq("user_email", user_email.strip().lower()) \
+                    .order("created_at", desc=True) \
+                    .execute()
+                if result.data is not None:
+                    return {"profiles": result.data or []}
+            except Exception as fe:
+                logger.warning(f"Filter by user_email in Supabase failed ({fe}), fetching all profiles...")
+
         result = db.table("registered_voice_profiles") \
-            .select("id, person_name, role, is_active, created_at, last_verified") \
+            .select("id, person_name, role, is_active, created_at, last_verified, user_email") \
             .order("created_at", desc=True) \
             .execute()
         return {"profiles": result.data or []}
     except Exception as e:
-        logger.error(f"Failed to list profiles: {e}")
-        return {"profiles": [], "error": str(e)}
+        try:
+            result = db.table("registered_voice_profiles") \
+                .select("id, person_name, role, is_active, created_at, last_verified") \
+                .order("created_at", desc=True) \
+                .execute()
+            return {"profiles": result.data or []}
+        except Exception as e2:
+            logger.error(f"Failed to list profiles: {e2}")
+            return {"profiles": [], "error": str(e2)}
 
 
 @router.delete("/profiles/{profile_id}")
-def delete_voice_profile(profile_id: str) -> dict:
+def delete_voice_profile(profile_id: str, permanent: bool = True) -> dict:
     """
-    Soft-deletes (deactivates) a voice profile by its ID.
+    Deletes or deactivates a voice profile by its ID.
+    If permanent is True, removes the record from the database.
     """
     try:
-        db.table("registered_voice_profiles") \
-            .update({"is_active": False}) \
-            .eq("id", profile_id) \
-            .execute()
-        return {"success": True, "message": f"Profile {profile_id} deactivated."}
+        if permanent:
+            db.table("registered_voice_profiles") \
+                .delete() \
+                .eq("id", profile_id) \
+                .execute()
+            return {"success": True, "message": f"Profile {profile_id} permanently deleted."}
+        else:
+            db.table("registered_voice_profiles") \
+                .update({"is_active": False}) \
+                .eq("id", profile_id) \
+                .execute()
+            return {"success": True, "message": f"Profile {profile_id} deactivated."}
     except Exception as e:
-        return {"success": False, "error": str(e)}
+        # Fallback to soft delete
+        try:
+            db.table("registered_voice_profiles") \
+                .update({"is_active": False}) \
+                .eq("id", profile_id) \
+                .execute()
+            return {"success": True, "message": f"Profile {profile_id} deactivated."}
+        except Exception as e2:
+            return {"success": False, "error": str(e2)}
 
 
 @router.post("/clear-alerts")
