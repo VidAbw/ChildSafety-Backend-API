@@ -9,7 +9,7 @@ from nanny_cam_guardian.logic.tracker import VelocityTracker
 # ── Thresholds ────────────────────────────────────────────────────────────────
 HAZARD_PROXIMITY_PX = 100       # hazard within this many pixels of child bbox → Level 1
 FALL_FRAME_THRESHOLD = 15       # consecutive frames with fall signal → Level 2 (was 30)
-FALL_ASPECT_RATIO = 1.15        # bbox width/height > this → person is lying horizontal
+FALL_ASPECT_RATIO = 1.50        # bbox width/height > this → person is lying horizontal
 FALL_DROP_VELOCITY = 180        # centroid Y px/s downward spike → sudden fall
 ABUSE_PROXIMITY_RATIO = 0.5     # adult centroid within 50% of frame height from child → Level 4
 ABUSE_VELOCITY_THRESHOLD = 450  # pixels/second wrist speed → Level 4 gate (raised to reduce false positives)

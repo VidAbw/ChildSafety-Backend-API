@@ -175,6 +175,7 @@ class NannyCamStreamer:
         # frame so only state *transitions* get pushed, not every frame a
         # sustained threat continues to hold.
         self._last_alert_key = None
+        self._last_alert_time = 0.0
 
     def start(self):
         if self.running: return
@@ -202,36 +203,45 @@ class NannyCamStreamer:
 
     def _capture_loop(self):
         while self.running and self.cap and self.cap.isOpened():
-            ret, frame_bgr = self.cap.read()
-            if not ret:
-                time.sleep(0.1)
-                continue
+            try:
+                ret, frame_bgr = self.cap.read()
+                if not ret:
+                    time.sleep(0.1)
+                    continue
 
-            timestamp = time.time()
-            frame_h = frame_bgr.shape[0]
-            frame_rgb = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2RGB)
+                timestamp = time.time()
+                frame_h = frame_bgr.shape[0]
+                frame_rgb = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2RGB)
 
-            detection = self.yolo.detect(frame_bgr)
-            all_kp = self.pose.extract_all(frame_rgb)
-            keypoints_map = self.pose.match_to_persons(all_kp, detection.persons, frame_bgr.shape[1], frame_h)
-            face_labels = self.face.identify(frame_bgr, detection.persons)
-            event = self.engine.evaluate(detection, keypoints_map, frame_h, timestamp, frame_width=frame_bgr.shape[1], face_labels=face_labels)
+                detection = self.yolo.detect(frame_bgr)
+                all_kp = self.pose.extract_all(frame_rgb)
+                keypoints_map = self.pose.match_to_persons(all_kp, detection.persons, frame_bgr.shape[1], frame_h)
+                face_labels = self.face.identify(frame_bgr, detection.persons)
+                event = self.engine.evaluate(detection, keypoints_map, frame_h, timestamp, frame_width=frame_bgr.shape[1], face_labels=face_labels)
 
-            if event.level == 0:
-                self._last_alert_key = None
-            else:
-                alert_key = (event.level, event.type)
-                if alert_key != self._last_alert_key:
-                    self._last_alert_key = alert_key
-                    self._alert_executor.submit(push_alert, event, USER_ID)
+                if event.level == 0:
+                    self._last_alert_key = None
+                else:
+                    alert_key = (event.level, event.type)
+                    if alert_key != self._last_alert_key or (timestamp - self._last_alert_time) >= 30.0:
+                        self._last_alert_key = alert_key
+                        self._last_alert_time = timestamp
+                        self._alert_executor.submit(push_alert, event, USER_ID)
 
-            _draw_detections(frame_bgr, detection, keypoints_map, self.engine._trackers, face_labels)
-            _draw_status_banner(frame_bgr, event)
+                _draw_detections(frame_bgr, detection, keypoints_map, self.engine._trackers, face_labels)
+                _draw_status_banner(frame_bgr, event)
 
-            ret, buffer = cv2.imencode('.jpg', frame_bgr)
-            if ret:
-                with self.lock:
-                    self.latest_frame = buffer.tobytes()
+                ret, buffer = cv2.imencode('.jpg', frame_bgr)
+                if ret:
+                    with self.lock:
+                        self.latest_frame = buffer.tobytes()
+            except RuntimeError:
+                # Gracefully exit loop during server shutdown/reload
+                break
+            except Exception as e:
+                if not self.running:
+                    break
+                print(f"[capture_loop error] {e}")
 
     def get_frame(self):
         with self.lock:
@@ -254,6 +264,7 @@ def run():
 
     frame_h = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
     last_alert_key = None
+    last_alert_time = 0.0
 
     try:
         while True:
@@ -289,8 +300,9 @@ def run():
                 last_alert_key = None
             else:
                 alert_key = (event.level, event.type)
-                if alert_key != last_alert_key:
+                if alert_key != last_alert_key or (timestamp - last_alert_time) >= 30.0:
                     last_alert_key = alert_key
+                    last_alert_time = timestamp
                     threading.Thread(target=push_alert, args=(event, USER_ID), daemon=True).start()
 
             # ── 6. Draw preview ───────────────────────────────────────────
