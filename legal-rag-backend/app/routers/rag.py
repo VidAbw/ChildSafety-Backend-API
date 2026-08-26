@@ -1,33 +1,18 @@
-# pyrefly: ignore [missing-import]
 from fastapi import APIRouter, HTTPException
-try:
-    from ..schemas.legal_schema import LegalSection
-    from ..schemas.rag_schema import RAGQueryRequest, RAGQueryResponse
-    from ..services.language_service import detect_language
-    from ..services.classifier_service import classify_abuse
-    from ..services.rag_service import (
-        retrieve_relevant_laws,
-        import_legal_sections,
-        build_faiss_index,
-        load_legal_sections,
-    )
-    from ..services.fact_extraction_service import extract_victim_age
-    from ..services.roadmap_service import generate_roadmap
-    from ..services.supabase_service import get_reporting_contacts
-except (ImportError, ValueError):
-    from app.schemas.legal_schema import LegalSection
-    from app.schemas.rag_schema import RAGQueryRequest, RAGQueryResponse
-    from app.services.language_service import detect_language
-    from app.services.classifier_service import classify_abuse
-    from app.services.rag_service import (
-        retrieve_relevant_laws,
-        import_legal_sections,
-        build_faiss_index,
-        load_legal_sections,
-    )
-    from app.services.fact_extraction_service import extract_victim_age
-    from app.services.roadmap_service import generate_roadmap
-    from app.services.supabase_service import get_reporting_contacts
+from typing import List
+from app.schemas.legal_schema import LegalSection
+from app.schemas.rag_schema import RAGQueryRequest, RAGQueryResponse
+from app.services.language_service import detect_language
+from app.services.classifier_service import classify_abuse
+from app.services.rag_service import (
+    retrieve_relevant_laws,
+    import_legal_sections,
+    build_faiss_index,
+    load_legal_sections,
+)
+from app.services.fact_extraction_service import extract_victim_age
+from app.services.roadmap_service import generate_roadmap
+from app.services.supabase_service import get_reporting_contacts
 import time
 
 router = APIRouter()
