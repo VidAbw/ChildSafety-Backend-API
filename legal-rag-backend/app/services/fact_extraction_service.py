@@ -154,7 +154,8 @@ def extract_all_structured_facts(query: str, language: str = None) -> dict:
         "sodomy": None,
         "gross_indecency": None,
         "employ_child_as_procurer": None,
-        "traffic_restricted_articles": None
+        "traffic_restricted_articles": None,
+        "extortion": None
     }
 
     # 1. victim_age
@@ -299,7 +300,7 @@ def extract_all_structured_facts(query: str, language: str = None) -> dict:
             []
         ),
         "threats": (
-            ["threatened", "warned not to tell", "frightened into silence", "threat", "threats", "scare", "scared", "fear", "fearful", "don't tell", "afraid", "intimidated", "silenced", "coerce", "coercion", "තර්ජනය", "තර්ජන", "තර්ජනයක්", "කිසිවෙකුට නොකියන ලෙස", "නොකියන ලෙස", "බිය ගැන්වූ", "බියවැද්දීම", "බියගැන්වීම", "බිය", "බියට", "බියෙන්", "බියට පත්", "බියට පත්ව", "බියෙන් සිටී", "බියපත්ව", "කියන්න එපා කියා"],
+            ["threatened", "warned not to tell", "frightened into silence", "threat", "threats", "threaten", "threatens", "threat of harm", "threat of injury", "threat of violence", "death threat", "threatened into silence", "coerced into silence", "forced into silence", "intimidated", "silenced", "coerce", "coercion", "තර්ජනය", "තර්ජන", "තර්ජනයක්", "තර්ජනය කළ", "තර්ජනය කර", "කිසිවෙකුට නොකියන ලෙස තර්ජනය", "නොකියන ලෙස තර්ජනය", "මරා දමන බවට තර්ජනය", "පහර දෙන බවට තර්ජනය", "හානියක් කරන බවට තර්ජනය", "බියගන්වා නිහඬ කිරීම", "බියගන්වා", "බියවැද්දීම", "බියගැන්වීම", "බිය ගැන්වූ"],
             [r"\b(?:no\s+threats|did\s+not\s+threaten)\b", r"තර්ජනයක්\s+කර\s+නැත"]
         ),
         "confinement": (
@@ -327,7 +328,7 @@ def extract_all_structured_facts(query: str, language: str = None) -> dict:
             []
         ),
         "psychological_distress": (
-            ["distress", "fear", "scared", "afraid", "terrified", "traumatized", "depression", "anxiety", "psychological", "emotional pain", "mental suffering", "trauma", "බිය", "බය", "මානසික පීඩාව", "මානසික කෲරත්වය", "මානසික පීඩා"],
+            ["distress", "fear", "fearful", "scared", "afraid", "terrified", "traumatized", "depression", "anxiety", "psychological", "emotional pain", "mental suffering", "trauma", "frightened", "බිය", "බය", "බියට", "බියෙන්", "බියට පත්", "බියට පත්ව", "බියෙන් සිටී", "බියපත්ව", "මානසික පීඩාව", "මානසික කෲරත්වය", "මානසික පීඩා"],
             []
         ),
         "unnatural_intercourse": (
@@ -349,6 +350,10 @@ def extract_all_structured_facts(query: str, language: str = None) -> dict:
         "traffic_restricted_articles": (
             ["traffic in restricted articles", "trafficking restricted articles", "restricted articles", "sell drugs", "sell liquor", "තහනම් භාණ්ඩ ජාවාරම", "තහනම් ද්‍රව්‍ය", "මත්ද්‍රව්‍ය"],
             []
+        ),
+        "extortion": (
+            ["extort", "extortion", "extorting", "extorted", "demand money", "demanding money", "demand property", "demanding property", "valuable security", "force payment", "ransom", "demanded cash", "compel illegal act", "constrain to illegal act", "කප්පම්", "කප්පම් ගැනීම", "දේපළ ලබාගැනීම", "මුදල් බලහත්කාරයෙන් ලබාගැනීම", "මුදල් ඉල්ලා", "දේපල ලබාගැනීම", "විරෝධී ක්‍රියාවකට බලකිරීම"],
+            [r"\b(?:no\s+extortion|did\s+not\s+demand\s+money|no\s+money\s+demanded)\b", r"කප්පම්\s+ගැනීමක්\s+නැත"]
         )
     }
 
@@ -492,5 +497,7 @@ def extract_canonical_facts(query: str, language: str = None) -> List[str]:
         extracted_canonical.append("abandonment")
     if facts_dict["threats"] is True or facts_dict["threat_of_harm"] is True or facts_dict["threat_to_keep_silent"] is True:
         extracted_canonical.append("threats")
+    if facts_dict.get("extortion") is True:
+        extracted_canonical.append("extortion")
 
     return sorted(list(set(extracted_canonical)))

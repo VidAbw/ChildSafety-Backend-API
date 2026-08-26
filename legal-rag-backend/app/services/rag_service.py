@@ -128,7 +128,7 @@ LEGAL_KNOWLEDGE_BASE = {
     },
     "316": {
         "section": "316",
-        "title": "Voluntarily causing grievous hurt by dangerous weapons or means",
+        "title": "Punishment for voluntarily causing grievous hurt",
         "jurisdiction": "Sri Lanka",
         "law": "Penal Code",
         "required_elements": [
@@ -149,6 +149,58 @@ LEGAL_KNOWLEDGE_BASE = {
         ],
         "negative_conditions": [
             "no_physical_contact",
+            "no_injury_occurred"
+        ],
+        "source": "Sri Lankan Penal Code",
+        "source_version": "Original Penal Code Ordinance No. 2 of 1883"
+    },
+    "317": {
+        "section": "317",
+        "title": "Voluntarily causing grievous hurt by dangerous weapons or means",
+        "jurisdiction": "Sri Lanka",
+        "law": "Penal Code",
+        "required_elements": [
+            "voluntarily_causing_hurt",
+            "satisfying_statutory_grievous_hurt_category",
+            "use_of_dangerous_weapon_or_dangerous_means"
+        ],
+        "supporting_facts": [
+            "physical_assault",
+            "shooting_instrument",
+            "stabbing_instrument",
+            "cutting_instrument",
+            "weapon_likely_to_cause_death",
+            "fire_or_heated_substance",
+            "poison_or_corrosive",
+            "explosive_substance",
+            "fracture_or_dislocation_of_bone_or_tooth"
+        ],
+        "negative_conditions": [
+            "no_weapon_was_used",
+            "no_injury_occurred"
+        ],
+        "source": "Sri Lankan Penal Code",
+        "source_version": "Original Penal Code Ordinance No. 2 of 1883"
+    },
+    "318": {
+        "section": "318",
+        "title": "Voluntarily causing hurt to extort property, or to constrain to an illegal act",
+        "jurisdiction": "Sri Lanka",
+        "law": "Penal Code",
+        "required_elements": [
+            "voluntarily_causing_hurt",
+            "causing_bodily_pain_or_disease_or_infirmity",
+            "extorting_property_or_constraining_illegal_act"
+        ],
+        "supporting_facts": [
+            "physical_assault",
+            "extortion",
+            "demand_money",
+            "demand_property",
+            "valuable_security"
+        ],
+        "negative_conditions": [
+            "no_extortion",
             "no_injury_occurred"
         ],
         "source": "Sri Lankan Penal Code",
@@ -559,11 +611,11 @@ SECTION_CANONICAL_REQUIREMENTS = {
     "311": {"required_facts_any": ["physical_injury"]},
     "312": {"required_facts_any": ["physical_assault"]},
     "313": {"required_facts_any": ["physical_assault", "physical_injury"]},
-    "314": {"required_facts_any": ["physical_assault"]},
-    "315": {"required_facts_any": ["physical_assault", "physical_injury"]},
+    "314": {"required_facts_any": ["physical_assault", "physical_injury"]},
+    "315": {"required_facts_all": [["physical_assault", "physical_injury"], ["restricted_articles"]]},
     "316": {"required_facts_any": ["physical_assault", "physical_injury"]},
-    "317": {"required_facts_any": ["physical_assault"]},
-    "318": {"required_facts_any": ["physical_assault", "physical_injury"]},
+    "317": {"required_facts_all": [["physical_assault", "physical_injury"], ["restricted_articles"]]},
+    "318": {"required_facts_all": [["physical_assault", "physical_injury"], ["extortion"]]},
     "483": {"required_facts_any": ["threats", "threat_of_harm", "threat_to_keep_silent"]},
     "486": {"required_facts_any": ["threats", "threat_of_harm", "threat_to_keep_silent"]}
 }
@@ -790,6 +842,45 @@ def extract_all_structured_facts(query: str, language: str) -> dict:
     return facts
 
 
+REJECTION_REASON_MAP = {
+    "begging_conduct": "missing_required_fact: begging",
+    "kidnapping_or_abduction_conduct": "missing_required_fact: kidnapping_or_abduction",
+    "incestuous_relationship": "missing_required_fact: incest_relationship",
+    "sexual_conduct": "missing_required_fact: sexual_conduct",
+    "online_or_material_abuse_conduct": "missing_required_fact: online_or_material_abuse",
+    "sexual_intercourse_penetration": "missing_required_fact: penetration_or_intercourse",
+    "use_of_dangerous_weapon_or_means": "missing_required_fact: dangerous_weapon",
+    "grievous_hurt_category_satisfied": "missing_required_fact: grievous_hurt",
+    "extortion_coercion_intent": "missing_required_fact: extortion",
+    "threat_conduct": "missing_required_fact: explicit_threat",
+    "abandonment_conduct": "missing_required_fact: abandonment",
+    "employ_child_as_procurer": "missing_required_fact: employ_child_as_procurer",
+    "traffic_restricted_articles": "missing_required_fact: traffic_restricted_articles",
+    "hurt_or_assault_conduct": "missing_required_fact: physical_assault_or_injury",
+    "unnatural_conduct": "missing_required_fact: unnatural_conduct",
+    "gross_indecency_conduct": "missing_required_fact: gross_indecency",
+    "grave_sexual_conduct": "missing_required_fact: sexual_conduct",
+    "sexual_harassment_conduct": "missing_required_fact: sexual_conduct",
+    "soliciting_conduct": "missing_required_fact: commercial_or_sexual_conduct",
+    "exploitation_conduct": "missing_required_fact: commercial_or_image_exploitation",
+    "procuring_conduct": "missing_required_fact: commercial_exploitation",
+    "trafficking_or_exploitation_conduct": "missing_required_fact: trafficking_or_exploitation",
+    "premises_reporting_duty": "missing_required_fact: premises_reporting_duty",
+    "victim_under_18": "missing_required_fact: minor_under_18",
+    "offender_has_custody_charge_or_care": "missing_required_fact: custody_or_care",
+    "wilful_assault_ill_treatment_neglect_abandonment": "missing_required_fact: assault_ill_treatment_neglect",
+    "conduct_likely_to_cause_suffering_or_injury": "missing_required_fact: suffering_or_injury",
+    "voluntarily_causing_hurt": "missing_required_fact: physical_assault",
+    "causing_bodily_pain_disease_infirmity": "missing_required_fact: physical_injury",
+    "victim_under_12": "missing_required_fact: victim_under_12",
+    "victim_under_21": "missing_required_fact: victim_under_21",
+    "female_victim": "missing_required_fact: female_victim",
+    "wrongful_confinement_intent": "missing_required_fact: confinement",
+    "murder_intent": "missing_required_fact: murder_intent",
+    "age_restriction": "missing_required_fact: age_eligibility"
+}
+
+
 def evaluate_legal_elements(sec_num: str, facts: dict) -> Tuple[dict, str]:
     elements = {}
     
@@ -799,114 +890,121 @@ def evaluate_legal_elements(sec_num: str, facts: dict) -> Tuple[dict, str]:
         if v is False: return "NOT_SATISFIED"
         return "UNKNOWN"
 
-    # Core statutory requirements pre-filtering (Requirement 10 & 15)
+    # Core statutory requirements pre-filtering
     
     # 1. Begging: No begging provision without begging conduct
     if sec_num == "288":
         if facts.get("begging") is not True:
-            return {"begging_conduct": "NOT_SATISFIED"}, "rejected"
+            return {"begging_conduct": "NOT_SATISFIED"}, "REJECTED"
             
     # 2. Kidnapping/Abduction: No kidnapping without kidnapping, abduction, or taking facts
     if sec_num in ["350", "351", "352", "353", "354", "355", "356", "357", "358"]:
         if not (facts.get("kidnapping") is True or facts.get("abduction") is True or facts.get("taking_from_guardian") is True):
-            return {"kidnapping_or_abduction_conduct": "NOT_SATISFIED"}, "rejected"
+            return {"kidnapping_or_abduction_conduct": "NOT_SATISFIED"}, "REJECTED"
             
     # 3. Incest: No incest without family relationship AND sexual conduct
     if sec_num == "364A":
         if facts.get("offender_relationship") not in ["parent", "relative"]:
-            return {"incestuous_relationship": "NOT_SATISFIED"}, "rejected"
+            return {"incestuous_relationship": "NOT_SATISFIED"}, "REJECTED"
         if not (facts.get("penetration") is True or facts.get("intercourse") is True or facts.get("sexual_contact") is True or facts.get("sexual_act") is True or facts.get("sexual_touching") is True):
-            return {"sexual_conduct": "NOT_SATISFIED"}, "rejected"
+            return {"sexual_conduct": "NOT_SATISFIED"}, "REJECTED"
             
-    # 4. Online / Material Abuse: No online/material abuse without online or sexual-material facts
+    # 4. Online / Material Abuse: No online/material abuse without sexual-material facts
     if sec_num in ["286A", "286B", "365C"]:
-        if not (facts.get("online_contact") is True or facts.get("sexual_image_material") is True):
-            return {"online_or_material_abuse_conduct": "NOT_SATISFIED"}, "rejected"
+        if facts.get("sexual_image_material") is not True:
+            return {"sexual_image_material": "NOT_SATISFIED"}, "REJECTED"
+        if sec_num == "286B" and facts.get("online_contact") is not True:
+            return {"online_contact": "NOT_SATISFIED"}, "REJECTED"
             
     # 5. Rape: No rape-specific provision without rape facts (penetration or intercourse)
     if sec_num in ["363", "364"]:
         if not (facts.get("penetration") is True or facts.get("intercourse") is True):
-            return {"sexual_intercourse_penetration": "NOT_SATISFIED"}, "rejected"
+            return {"sexual_intercourse_penetration": "NOT_SATISFIED"}, "REJECTED"
             
-    # 6. Grievous Hurt: No grievous-hurt provision without grievous-hurt indicators
-    if sec_num in ["313", "316", "318"]:
+    # 6. Dangerous weapons: Provisions requiring dangerous weapons (315, 317) must not be marked applicable without weapons
+    if sec_num in ["315", "317"]:
+        if facts.get("weapon_or_dangerous_means") is not True:
+            return {"use_of_dangerous_weapon_or_means": "NOT_SATISFIED"}, "REJECTED"
+
+    # 7. Grievous Hurt: Provisions requiring grievous hurt (311, 313, 316, 317) must not be marked applicable when grievous hurt is not established
+    if sec_num in ["311", "313", "316", "317"]:
         if facts.get("injury_severity") != "grievous":
-            return {"grievous_hurt_category_satisfied": "NOT_SATISFIED"}, "rejected"
-            
-    # 7. Abandonment: No abandonment provision without abandonment conduct
-    if sec_num == "308":
-        if facts.get("abandonment") is not True:
-            return {"abandonment_conduct": "NOT_SATISFIED"}, "rejected"
+            return {"grievous_hurt_category_satisfied": "NOT_SATISFIED"}, "REJECTED"
 
-    # 8. Procurer (Section 288A)
-    if sec_num == "288A":
-        if facts.get("employ_child_as_procurer") is not True:
-            return {"employ_child_as_procurer": "NOT_SATISFIED"}, "rejected"
+    # 8. Extortion: Provisions requiring extortion (318) must not be marked applicable without extortion fact
+    if sec_num == "318":
+        if facts.get("extortion") is not True:
+            return {"extortion_coercion_intent": "NOT_SATISFIED"}, "REJECTED"
 
-    # 9. Restricted articles (Section 288B)
-    if sec_num == "288B":
-        if facts.get("traffic_restricted_articles") is not True:
-            return {"traffic_restricted_articles": "NOT_SATISFIED"}, "rejected"
-
-    # 10. Simple hurt / assault: No hurt provision without physical assault or physical injury
-    if sec_num in ["310", "312", "314", "315", "317"]:
-        if not (facts.get("physical_assault") is True or facts.get("physical_injury") is True):
-            return {"hurt_or_assault_conduct": "NOT_SATISFIED"}, "rejected"
-
-    # 11. Unnatural / sodomy
-    if sec_num == "365":
-        if not (facts.get("unnatural_intercourse") is True or facts.get("sodomy") is True):
-            return {"unnatural_conduct": "NOT_SATISFIED"}, "rejected"
-
-    # 12. Gross indecency
-    if sec_num == "365A":
-        if facts.get("gross_indecency") is not True:
-            return {"gross_indecency_conduct": "NOT_SATISFIED"}, "rejected"
-
-    # 13. Grave sexual abuse
-    if sec_num == "365B":
-        if not (facts.get("sexual_touching") is True or facts.get("sexual_contact") is True or facts.get("sexual_act") is True):
-            return {"grave_sexual_conduct": "NOT_SATISFIED"}, "rejected"
-
-    # 14. Sexual harassment
-    if sec_num == "345":
-        if not (facts.get("sexual_harassment") is True or facts.get("sexual_touching") is True or facts.get("sexual_contact") is True or facts.get("sexual_act") is True):
-            return {"sexual_harassment_conduct": "NOT_SATISFIED"}, "rejected"
-
-    # 15. Soliciting
-    if sec_num == "360E":
-        if not (facts.get("commercial_exploitation") is True or facts.get("sexual_contact") is True or facts.get("sexual_act") is True):
-            return {"soliciting_conduct": "NOT_SATISFIED"}, "rejected"
-
-    # 16. Exploitation
-    if sec_num == "360B":
-        if not (facts.get("commercial_exploitation") is True or facts.get("sexual_image_material") is True):
-            return {"exploitation_conduct": "NOT_SATISFIED"}, "rejected"
-
-    # 17. Procuration
-    if sec_num == "360A":
-        if facts.get("commercial_exploitation") is not True:
-            return {"procuring_conduct": "NOT_SATISFIED"}, "rejected"
-
-    # 18. Trafficking
-    if sec_num in ["360C", "360D", "358A"]:
-        if not (facts.get("trafficking") is True or facts.get("commercial_exploitation") is True or facts.get("begging") is True):
-            return {"trafficking_or_exploitation_conduct": "NOT_SATISFIED"}, "rejected"
-
-    # 19. Criminal intimidation
+    # 9. Criminal intimidation: Explicit threat/intimidation facts must be evaluated separately
     if sec_num in ["483", "486"]:
         if not (facts.get("threats") is True or facts.get("threat_of_harm") is True or facts.get("threat_to_keep_silent") is True):
-            return {"threat_conduct": "NOT_SATISFIED"}, "rejected"
+            return {"threat_conduct": "NOT_SATISFIED"}, "REJECTED"
+            
+    # 10. Abandonment: No abandonment provision without abandonment conduct
+    if sec_num == "308":
+        if facts.get("abandonment") is not True:
+            return {"abandonment_conduct": "NOT_SATISFIED"}, "REJECTED"
 
-    # 20. Premises reporting duty
+    # 11. Procurer (Section 288A)
+    if sec_num == "288A":
+        if facts.get("employ_child_as_procurer") is not True:
+            return {"employ_child_as_procurer": "NOT_SATISFIED"}, "REJECTED"
+
+    # 12. Restricted articles (Section 288B)
+    if sec_num == "288B":
+        if facts.get("traffic_restricted_articles") is not True:
+            return {"traffic_restricted_articles": "NOT_SATISFIED"}, "REJECTED"
+
+    # 13. Simple hurt / assault: No hurt provision without physical assault or physical injury
+    if sec_num in ["310", "312", "314", "315", "316", "317", "318"]:
+        if not (facts.get("physical_assault") is True or facts.get("physical_injury") is True):
+            return {"hurt_or_assault_conduct": "NOT_SATISFIED"}, "REJECTED"
+
+    # 14. Unnatural / sodomy
+    if sec_num == "365":
+        if not (facts.get("unnatural_intercourse") is True or facts.get("sodomy") is True):
+            return {"unnatural_conduct": "NOT_SATISFIED"}, "REJECTED"
+
+    # 15. Gross indecency
+    if sec_num == "365A":
+        if facts.get("gross_indecency") is not True:
+            return {"gross_indecency_conduct": "NOT_SATISFIED"}, "REJECTED"
+
+    # 16. Grave sexual abuse
+    if sec_num == "365B":
+        if not (facts.get("sexual_touching") is True or facts.get("sexual_contact") is True or facts.get("sexual_act") is True):
+            return {"grave_sexual_conduct": "NOT_SATISFIED"}, "REJECTED"
+
+    # 17. Sexual harassment
+    if sec_num == "345":
+        if not (facts.get("sexual_harassment") is True or facts.get("sexual_touching") is True or facts.get("sexual_contact") is True or facts.get("sexual_act") is True):
+            return {"sexual_harassment_conduct": "NOT_SATISFIED"}, "REJECTED"
+
+    # 18. Soliciting
+    if sec_num == "360E":
+        if not (facts.get("commercial_exploitation") is True or facts.get("sexual_contact") is True or facts.get("sexual_act") is True):
+            return {"soliciting_conduct": "NOT_SATISFIED"}, "REJECTED"
+
+    # 19. Exploitation
+    if sec_num == "360B":
+        if not (facts.get("commercial_exploitation") is True or facts.get("sexual_image_material") is True):
+            return {"exploitation_conduct": "NOT_SATISFIED"}, "REJECTED"
+
+    # 20. Procuration
+    if sec_num == "360A":
+        if facts.get("commercial_exploitation") is not True:
+            return {"procuring_conduct": "NOT_SATISFIED"}, "REJECTED"
+
+    # 21. Trafficking
+    if sec_num in ["360C", "360D", "358A"]:
+        if not (facts.get("trafficking") is True or facts.get("commercial_exploitation") is True or facts.get("begging") is True):
+            return {"trafficking_or_exploitation_conduct": "NOT_SATISFIED"}, "REJECTED"
+
+    # 22. Premises reporting duty
     if sec_num == "286C":
         if facts.get("premises_reporting_duty") is not True:
-            return {"premises_reporting_duty": "NOT_SATISFIED"}, "rejected"
-
-    # 21. Voluntarily causing hurt/grievous hurt to extort property: requires threats/extortion
-    if sec_num in ["317", "318"]:
-        if not (facts.get("threats") is True or facts.get("threat_of_harm") is True or facts.get("threat_to_keep_silent") is True):
-            return {"extortion_coercion_intent": "NOT_SATISFIED"}, "rejected"
+            return {"premises_reporting_duty": "NOT_SATISFIED"}, "REJECTED"
 
     # Detailed element evaluations
     if sec_num == "308A":
@@ -918,7 +1016,8 @@ def evaluate_legal_elements(sec_num: str, facts: dict) -> Tuple[dict, str]:
         elements["conduct_likely_to_cause_suffering_or_injury"] = eval_val(
             facts.get("health_suffering") is True or facts.get("physical_injury") is True or 
             facts.get("physical_assault") is True or facts.get("neglect") is True or 
-            facts.get("abandonment") is True or facts.get("food_deprivation") is True
+            facts.get("abandonment") is True or facts.get("food_deprivation") is True or
+            facts.get("psychological_distress") is True
         )
 
     elif sec_num == "308":
@@ -949,7 +1048,7 @@ def evaluate_legal_elements(sec_num: str, facts: dict) -> Tuple[dict, str]:
         elements["causing_bodily_pain_disease_infirmity"] = eval_val(facts.get("physical_injury"))
 
     elif sec_num == "311":
-        elements["grievous_hurt_definition_reference"] = eval_val(facts.get("physical_injury"))
+        elements["grievous_hurt_category_satisfied"] = eval_val(facts.get("injury_severity") == "grievous")
 
     elif sec_num == "313":
         elements["voluntarily_causing_hurt"] = eval_val(facts.get("physical_assault"))
@@ -958,22 +1057,21 @@ def evaluate_legal_elements(sec_num: str, facts: dict) -> Tuple[dict, str]:
     elif sec_num == "315":
         elements["voluntarily_causing_hurt"] = eval_val(facts.get("physical_assault"))
         elements["causing_bodily_pain_disease_infirmity"] = eval_val(facts.get("physical_injury"))
-        elements["use_of_dangerous_weapon_or_means"] = eval_val(facts.get("weapon_or_dangerous_means"))
+        elements["use_of_dangerous_weapon_or_means"] = eval_val(facts.get("weapon_or_dangerous_means") is True)
 
     elif sec_num == "316":
         elements["voluntarily_causing_hurt"] = eval_val(facts.get("physical_assault"))
         elements["grievous_hurt_category_satisfied"] = eval_val(facts.get("injury_severity") == "grievous")
-        elements["use_of_dangerous_weapon_or_means"] = eval_val(facts.get("weapon_or_dangerous_means"))
 
     elif sec_num == "317":
         elements["voluntarily_causing_hurt"] = eval_val(facts.get("physical_assault"))
-        elements["causing_bodily_pain_disease_infirmity"] = eval_val(facts.get("physical_injury"))
-        elements["extortion_coercion_intent"] = eval_val(facts.get("threats"))
+        elements["grievous_hurt_category_satisfied"] = eval_val(facts.get("injury_severity") == "grievous")
+        elements["use_of_dangerous_weapon_or_means"] = eval_val(facts.get("weapon_or_dangerous_means") is True)
 
     elif sec_num == "318":
         elements["voluntarily_causing_hurt"] = eval_val(facts.get("physical_assault"))
-        elements["grievous_hurt_category_satisfied"] = eval_val(facts.get("injury_severity") == "grievous")
-        elements["extortion_coercion_intent"] = eval_val(facts.get("threats"))
+        elements["causing_bodily_pain_disease_infirmity"] = eval_val(facts.get("physical_injury"))
+        elements["extortion_coercion_intent"] = eval_val(facts.get("extortion") is True)
 
     elif sec_num in ["363", "364"]:
         elements["sexual_intercourse_penetration"] = eval_val(facts.get("penetration"))
@@ -1015,7 +1113,7 @@ def evaluate_legal_elements(sec_num: str, facts: dict) -> Tuple[dict, str]:
 
     elif sec_num == "345":
         elements["sexual_harassment_conduct"] = eval_val(
-            facts.get("sexual_harassment") is True or facts.get("sexual_touching") is True or facts.get("sexual_contact") is True or facts.get("sexual_act") is True or facts.get("threats") is True
+            facts.get("sexual_harassment") is True or facts.get("sexual_touching") is True or facts.get("sexual_contact") is True or facts.get("sexual_act") is True
         )
 
     elif sec_num == "350":
@@ -1528,7 +1626,9 @@ def retrieve_relevant_laws(query: str, abuse_category: str = None, language: str
                 
         # If status is rejected, log to rejected list
         if status == "REJECTED":
-            rejected_reason = fact_reason if not is_fact_ok else "Mandatory statutory elements or factual prerequisites were not satisfied."
+            not_sat_keys = [k for k, v in elements.items() if v == "NOT_SATISFIED"]
+            first_not_sat = not_sat_keys[0] if not_sat_keys else None
+            rejected_reason = REJECTION_REASON_MAP.get(first_not_sat, f"missing_required_fact: {first_not_sat}" if first_not_sat else (fact_reason if not is_fact_ok else "statutory_prerequisite_not_satisfied"))
             rejected_laws_list.append({
                 "section": sec_num,
                 "reason": rejected_reason

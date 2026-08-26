@@ -160,8 +160,8 @@ def run_tests():
             "name": "Grievous Hurt Gating - Grievous indicators present (English)",
             "query": "A caregiver hit a 10-year-old child, fracturing the child's arm.",
             "language": "en",
-            "expect_present": ["313"],
-            "expect_absent": ["288", "316", "318"]
+            "expect_present": ["313", "316"],
+            "expect_absent": ["288", "317", "318"]
         },
         {
             "id": 20,
