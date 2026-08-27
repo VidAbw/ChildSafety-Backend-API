@@ -325,7 +325,7 @@ class ThreatPredictor:
         Supports both raw 2D matrices and profile dicts: {'matrix': [...], 'person_name': '...', 'role': '...', 'id': '...'}.
         Returns (is_match: bool, matched_profile: Optional[dict], min_distance: float).
         """
-        THRESHOLD = 0.28  # Cosine DTW distance for CMVN-normalized matrices — lower = more similar.
+        THRESHOLD = 0.35  # Cosine DTW distance for CMVN-normalized matrices (allows cross-mic matching while rejecting strangers).
         
         # Check volume before running DTW
         y = self.decode_audio(wav_bytes, target_sr=22050)
@@ -335,8 +335,8 @@ class ThreatPredictor:
         rms = float(np.sqrt(np.mean(y**2)))
         rms_scaled = rms * 32767.0
         db = float(20 * np.log10(rms_scaled) if rms_scaled > 0 else 0.0)
-        if db < 45.0:
-            # Sound is below conversational speech volume — skip DTW to prevent false matches on room silence
+        if db < 40.0:
+            # Sound is below speech volume — skip DTW to prevent false matches on room silence
             return False, None, 1.0
 
         mfcc_in, err = self.extract_mfcc_matrix(wav_bytes, n_mfcc=20, require_vad=False)

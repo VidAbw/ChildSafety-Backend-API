@@ -272,8 +272,8 @@ async def upload_audio_chunk(
     import time
     now_ts = time.time()
 
-    # Lower execution threshold to 48.0 dB (conversational speech) or when AI predicts threat
-    if amplitude_db >= 48.0 or class_id == 1:
+    # Lower execution threshold to 40.0 dB (conversational speech) or when AI predicts threat
+    if amplitude_db >= 40.0 or class_id == 1:
         stored_profiles = get_registered_mfcc_profiles()
         if stored_profiles:
             is_parent, matched_profile, dtw_dist = predictor.verify_parent_from_matrix(contents, stored_profiles)
@@ -301,7 +301,7 @@ async def upload_audio_chunk(
 
     # ── Presence Memory Hysteresis (15-Second Grace Window for speech continuation) ──
     time_since_last_speech = now_ts - _last_verified_speaker.get("timestamp", 0)
-    if not is_parent and time_since_last_speech < 15.0 and amplitude_db >= 48.0 and class_id == 0:
+    if not is_parent and time_since_last_speech < 15.0 and amplitude_db >= 40.0 and class_id == 0:
         if _last_verified_speaker.get("name"):
             is_parent = True
             matched_profile = {
@@ -337,12 +337,12 @@ async def upload_audio_chunk(
                 device_info=device_info
             )
     else:
-        if is_parent and amplitude_db >= 48.0:
+        if is_parent and amplitude_db >= 40.0:
             status_msg = f"Safe ({speaker_display} speaking)"
         elif amplitude_db >= 75.0:
             mitigation_msg = f"Anti-Fatigue: {amplitude_db:.1f}dB detected but AI confirmed SAFE. Alert suppressed."
             status_msg = "Safe (Confirmed Safe)"
-        elif amplitude_db < 48.0:
+        elif amplitude_db < 40.0:
             status_msg = "Safe (Quiet / Normal)"
         else:
             status_msg = "Safe (Normal)"
