@@ -19,6 +19,7 @@ router = APIRouter()
 
 # In-memory store of the latest ESP32 prediction (so the frontend can poll it)
 _last_result: dict = {}
+_last_verified_speaker: dict = {"name": None, "role": None, "timestamp": 0}
 
 # When set, the next audio chunk from the ESP32 is captured as a voice registration
 _register_next_for: dict = {}  # keys: person_name, role
@@ -73,6 +74,11 @@ def get_registered_mfcc_profiles() -> list:
 @router.get("/status")
 def get_audio_listener_status(user_email: str = None) -> dict:
     config = get_config()
+    import time
+    now_ts = time.time()
+    time_since_speech = now_ts - _last_verified_speaker.get("timestamp", 0)
+    is_active_presence = (_last_verified_speaker.get("name") is not None) and (time_since_speech <= 30.0)
+
     try:
         query = db.table("registered_voice_profiles") \
             .select("id, person_name, role, is_active, last_verified, user_email") \
@@ -100,14 +106,25 @@ def get_audio_listener_status(user_email: str = None) -> dict:
             profile_list = []
             profile_count = 0
 
+    # Annotate profiles with live nearby status
+    for p in profile_list:
+        p_name = p.get("person_name")
+        p["is_currently_nearby"] = bool(
+            is_active_presence and p_name == _last_verified_speaker.get("name")
+        )
+
+    active_spk = _last_verified_speaker.get("name") if is_active_presence else None
+    spk_role = _last_verified_speaker.get("role") if is_active_presence else None
+    presence_text = "Active Nearby" if is_active_presence else "Monitoring Area"
+
     return {
         "backend": "online",
         "parent_name": config.get("parent_name", "Not registered"),
         "registered_profiles": profile_count,
         "active_profiles": profile_list,
-        "latest_presence": _last_result.get("presence_status", "Monitoring Area"),
-        "active_speaker": _last_result.get("active_speaker"),
-        "speaker_role": _last_result.get("speaker_role"),
+        "latest_presence": presence_text,
+        "active_speaker": active_spk,
+        "speaker_role": spk_role,
         "last_seen": _last_result.get("last_seen"),
         "last_status": _last_result.get("status", "System Active"),
         "ws_listener": {"disabled": True, "message": "Phone audio listener has been disabled."},
@@ -120,7 +137,21 @@ def get_last_result() -> dict:
     Returns the latest prediction result from the ESP32 device.
     The frontend polls this every few seconds to show live status.
     """
-    return _last_result if _last_result else {"status": "No data yet — waiting for ESP32 audio."}
+    import time
+    now_ts = time.time()
+    time_since_speech = now_ts - _last_verified_speaker.get("timestamp", 0)
+    is_active_presence = (_last_verified_speaker.get("name") is not None) and (time_since_speech <= 30.0)
+
+    if not _last_result:
+        return {"status": "No data yet — waiting for ESP32 audio."}
+
+    res = dict(_last_result)
+    if not is_active_presence:
+        res["active_speaker"] = None
+        res["speaker_role"] = None
+        res["presence_status"] = "Monitoring Area"
+
+    return res
 
 
 @router.post("/register-next-chunk")
@@ -175,19 +206,19 @@ async def upload_audio_chunk(
 
     # ── REGISTRATION INTERCEPT ───────────────────────────────────
     # If armed, use this chunk as a voice registration instead of threat detection
-    global _register_next_for, _last_result
+    global _register_next_for, _last_result, _last_verified_speaker
     if _register_next_for:
         reg_name = _register_next_for["person_name"]
         reg_role = _register_next_for["role"]
         _register_next_for = {}  # disarm immediately
 
+        mfcc_matrix, vad_err = predictor.extract_mfcc_matrix(contents, n_mfcc=20, require_vad=True)
+        if mfcc_matrix is None:
+            logger.error(f"ESP32 registration chunk for '{reg_name}' failed VAD: {vad_err}")
+            return {"registered": False, "error": vad_err or "No voice detected. Please speak clearly near the microphone."}
+
         with open(PARENT_PROFILE_PATH, "wb") as f:
             f.write(contents)
-
-        mfcc_matrix = predictor.extract_mfcc_matrix(contents, n_mfcc=20)
-        if mfcc_matrix is None:
-            logger.error(f"ESP32 registration chunk for '{reg_name}' was too short or silent.")
-            return {"registered": False, "error": "Chunk was too short or silent. Try again."}
 
         # Deactivate previous profiles for this person
         try:
@@ -236,27 +267,49 @@ async def upload_audio_chunk(
     mitigation_msg = None
     is_parent = False
 
-    # ── 3. Parent Voice Verification ─────────────────────────
+    # ── 3. Parent Voice Verification (DTW) ───────────────────
     matched_profile = None
-    # Only verify voice if there is active sound/speech energy (>= 65dB) or if AI flagged a threat
-    if amplitude_db >= 65.0 or class_id == 1:
+    import time
+    now_ts = time.time()
+
+    # Lower execution threshold to 48.0 dB (conversational speech) or when AI predicts threat
+    if amplitude_db >= 48.0 or class_id == 1:
         stored_profiles = get_registered_mfcc_profiles()
         if stored_profiles:
             is_parent, matched_profile, dtw_dist = predictor.verify_parent_from_matrix(contents, stored_profiles)
-            if is_parent and matched_profile and matched_profile.get("id"):
-                try:
-                    from datetime import datetime, timezone
-                    now_iso = datetime.now(timezone.utc).isoformat()
-                    db.table("registered_voice_profiles").update({"last_verified": now_iso}).eq("id", matched_profile["id"]).execute()
-                except Exception as e:
-                    logger.debug(f"Could not update last_verified in Supabase: {e}")
+            if is_parent and matched_profile:
+                _last_verified_speaker = {
+                    "name": matched_profile.get("name"),
+                    "role": matched_profile.get("role", "Parent"),
+                    "timestamp": now_ts,
+                }
+                if matched_profile.get("id"):
+                    try:
+                        from datetime import datetime, timezone
+                        now_iso = datetime.now(timezone.utc).isoformat()
+                        db.table("registered_voice_profiles").update({"last_verified": now_iso}).eq("id", matched_profile["id"]).execute()
+                    except Exception as e:
+                        logger.debug(f"Could not update last_verified in Supabase: {e}")
             logger.info(f"Supabase profile verification: {'MATCH (' + str(matched_profile.get('name') if matched_profile else '') + ')' if is_parent else 'no match'}")
         else:
             # Fallback: local WAV file (backward compatibility)
             is_parent = predictor.verify_parent(contents, PARENT_PROFILE_PATH)
             if is_parent:
                 matched_profile = {"name": parent_name, "role": "Parent", "id": None}
+                _last_verified_speaker = {"name": parent_name, "role": "Parent", "timestamp": now_ts}
                 logger.info("Parent verified via local WAV fallback.")
+
+    # ── Presence Memory Hysteresis (15-Second Grace Window for speech continuation) ──
+    time_since_last_speech = now_ts - _last_verified_speaker.get("timestamp", 0)
+    if not is_parent and time_since_last_speech < 15.0 and amplitude_db >= 48.0 and class_id == 0:
+        if _last_verified_speaker.get("name"):
+            is_parent = True
+            matched_profile = {
+                "name": _last_verified_speaker.get("name"),
+                "role": _last_verified_speaker.get("role", "Parent"),
+                "id": None,
+            }
+            logger.info(f"Presence Hysteresis: Retained presence for '{matched_profile['name']}' (last heard {time_since_last_speech:.1f}s ago).")
 
     speaker_name = (matched_profile.get("name") if matched_profile else None) or parent_name
     speaker_role = (matched_profile.get("role") if matched_profile else None) or "Parent"
@@ -284,19 +337,24 @@ async def upload_audio_chunk(
                 device_info=device_info
             )
     else:
-        if is_parent and amplitude_db >= 65.0:
+        if is_parent and amplitude_db >= 48.0:
             status_msg = f"Safe ({speaker_display} speaking)"
         elif amplitude_db >= 75.0:
             mitigation_msg = f"Anti-Fatigue: {amplitude_db:.1f}dB detected but AI confirmed SAFE. Alert suppressed."
             status_msg = "Safe (Confirmed Safe)"
-        elif amplitude_db < 65.0:
+        elif amplitude_db < 48.0:
             status_msg = "Safe (Quiet / Normal)"
         else:
             status_msg = "Safe (Normal)"
 
     from datetime import datetime, timezone
     now_iso = datetime.now(timezone.utc).isoformat()
-    presence_status = "Active Nearby" if (is_parent and amplitude_db >= 65.0) else ("Monitoring Area" if not is_parent else "Present")
+    
+    # Active Presence Window (30 seconds)
+    is_active_presence = (_last_verified_speaker.get("name") is not None) and (time_since_last_speech <= 30.0)
+    current_active_speaker = _last_verified_speaker.get("name") if is_active_presence else None
+    current_speaker_role = _last_verified_speaker.get("role") if is_active_presence else None
+    presence_status = "Active Nearby" if is_active_presence else "Monitoring Area"
 
     result = {
         "filename": file.filename,
@@ -306,10 +364,10 @@ async def upload_audio_chunk(
         "amplitude_db": round(float(amplitude_db), 2),
         "mitigation_message": mitigation_msg,
         "is_parent": is_parent,
-        "active_speaker": speaker_name if (is_parent and amplitude_db >= 65.0) else (_last_result.get("active_speaker") if _last_result else None),
-        "speaker_role": speaker_role if (is_parent and amplitude_db >= 65.0) else (_last_result.get("speaker_role") if _last_result else None),
+        "active_speaker": current_active_speaker,
+        "speaker_role": current_speaker_role,
         "presence_status": presence_status,
-        "last_seen": now_iso if (is_parent and amplitude_db >= 65.0) else (_last_result.get("last_seen") if _last_result else None),
+        "last_seen": now_iso if is_parent else (_last_result.get("last_seen") if _last_result else None),
         "device_info": device_info,
     }
 
@@ -329,26 +387,26 @@ async def register_parent_voice(
 ):
     """
     Registers a voice profile by:
-      1. Saving the WAV file locally (backward compat)
-      2. Extracting an MFCC matrix
+      1. Validating speech presence via Voice Activity Detection (VAD)
+      2. Extracting a clean CMVN-normalized MFCC matrix
       3. Inserting the matrix into Supabase registered_voice_profiles with user_email
-      4. Updating the local config with the parent name
+      4. Updating the local config and saving reference WAV file
     """
-    import librosa
     contents = await file.read()
     logger.info(f"register-parent: received file '{file.filename}', size={len(contents)} bytes, content_type={file.content_type}, user_email={user_email}")
 
-    # Save WAV locally as fallback
-    with open(PARENT_PROFILE_PATH, "wb") as f:
-        f.write(contents)
-
-    # Extract MFCC matrix for Supabase storage
-    mfcc_matrix = predictor.extract_mfcc_matrix(contents, n_mfcc=20)
+    # Extract and validate voice features via VAD
+    mfcc_matrix, vad_error = predictor.extract_mfcc_matrix(contents, n_mfcc=20, require_vad=True)
     if mfcc_matrix is None:
+        logger.warning(f"Voice registration rejected for '{parent_name}': {vad_error}")
         return {
             "success": False,
-            "error": "Audio was too short or silent. Please record a longer sample (at least 3 seconds).",
+            "error": vad_error or "No voice detected. Please speak clearly into the microphone for 3 to 5 seconds.",
         }
+
+    # Save WAV locally as fallback only after voice validation succeeds
+    with open(PARENT_PROFILE_PATH, "wb") as f:
+        f.write(contents)
 
     # Convert numpy array to a plain nested list for JSON storage
     mfcc_list = mfcc_matrix.tolist()

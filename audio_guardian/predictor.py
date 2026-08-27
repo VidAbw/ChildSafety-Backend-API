@@ -168,22 +168,127 @@ class ThreatPredictor:
 
         return None
 
-    def extract_mfcc_matrix(self, wav_bytes: bytes, n_mfcc: int = 20) -> Optional[np.ndarray]:
+    def validate_and_extract_voice(self, y: np.ndarray, sr: int = 22050) -> tuple[bool, Optional[np.ndarray], str]:
         """
-        Extracts an MFCC matrix from raw audio bytes for DTW voice matching.
-        Supports WAV, WebM (browser), M4A (mobile) via universal decoding.
-        Returns a 2D numpy array of shape (n_mfcc, T) or None on failure.
+        Performs multi-stage Voice Activity Detection (VAD) and speech extraction:
+        1. Checks overall energy & decibel level against noise floor.
+        2. Performs frame-by-frame RMS and spectral centroid analysis to detect human vocal presence.
+        3. Validates minimum voiced speech duration (at least 1.0s of actual speech).
+        4. Verifies harmonic energy via Harmonic-Percussive Source Separation (HPSS).
+        5. Extracts and concatenates isolated voiced audio segments.
+        Returns: (is_valid: bool, voiced_audio: Optional[np.ndarray], message: str)
         """
-        logger.info(f"extract_mfcc_matrix: received {len(wav_bytes)} bytes")
+        if y is None or len(y) < int(sr * 1.5):
+            return False, None, "Recording is too short. Please speak for at least 3 to 5 seconds."
+
+        # 1. Overall volume / RMS check
+        rms = float(np.sqrt(np.mean(y**2)))
+        rms_scaled = rms * 32767.0
+        db = float(20 * np.log10(rms_scaled) if rms_scaled > 0 else 0.0)
+
+        if db < 40.0 or rms < 0.003:
+            logger.warning(f"Voice validation failed: Audio is silent/too quiet (RMS={rms:.5f}, dB={db:.1f}).")
+            return False, None, "No sound detected (Audio was silent or too quiet). Please speak clearly into the microphone."
+
+        # 2. Short-time frame analysis (approx 46ms frame, 23ms hop)
+        frame_length = 1024
+        hop_length = 512
+        try:
+            frame_rms = librosa.feature.rms(y=y, frame_length=frame_length, hop_length=hop_length)[0]
+            frame_zcr = librosa.feature.zero_crossing_rate(y=y, frame_length=frame_length, hop_length=hop_length)[0]
+            frame_sc = librosa.feature.spectral_centroid(y=y, sr=sr, n_fft=frame_length, hop_length=hop_length)[0]
+        except Exception as e_feat:
+            logger.error(f"Error computing frame acoustic features: {e_feat}")
+            return False, None, "Could not process audio features."
+
+        # Thresholds tailored for conversational voice vs room noise
+        max_frame_rms = float(np.max(frame_rms)) if len(frame_rms) > 0 else 0.0
+        thresh_rms = max(0.010, max_frame_rms * 0.20)
+
+        # Voiced frames: sufficient energy, spectral centroid within vocal range (150 - 4500 Hz), reasonable ZCR
+        voiced_mask = (
+            (frame_rms >= thresh_rms) &
+            (frame_sc >= 150.0) &
+            (frame_sc <= 4500.0) &
+            (frame_zcr <= 0.40)
+        )
+
+        num_voiced_frames = int(np.sum(voiced_mask))
+        voiced_duration = (num_voiced_frames * hop_length) / sr
+
+        logger.info(f"VAD Analysis: Peak RMS={max_frame_rms:.4f}, Total Voiced Duration={voiced_duration:.2f}s ({num_voiced_frames} frames)")
+
+        if voiced_duration < 1.0:
+            logger.warning(f"Voice validation failed: Voiced speech duration ({voiced_duration:.2f}s) is under the 1.0s minimum threshold.")
+            return False, None, f"No voice detected or sample was too short (Only {voiced_duration:.1f}s of speech). Please speak clearly for 3 to 5 seconds."
+
+        # 3. Voiced Segment Extraction with temporal padding
+        # Dilate mask by 2 frames (approx 50ms) on each side to preserve phoneme onsets/offsets
+        dilated_mask = voiced_mask.copy()
+        for i in range(len(dilated_mask)):
+            if voiced_mask[i]:
+                dilated_mask[max(0, i - 2): min(len(dilated_mask), i + 3)] = True
+
+        sample_mask = np.zeros(len(y), dtype=bool)
+        for i, is_voiced in enumerate(dilated_mask):
+            if is_voiced:
+                start_sample = i * hop_length
+                end_sample = min(len(y), start_sample + frame_length)
+                sample_mask[start_sample:end_sample] = True
+
+        y_voiced = y[sample_mask]
+        if len(y_voiced) < int(sr * 0.8):
+            return False, None, "Extracted speech segment is too short. Please speak clearly for 3 to 5 seconds."
+
+        # 4. Harmonic Formant Confirmation (Differentiates human voice from stationary noise/whistle)
+        try:
+            y_harm, _ = librosa.effects.hpss(y_voiced)
+            harm_rms = float(np.sqrt(np.mean(y_harm**2)))
+            if harm_rms < 0.004:
+                logger.warning(f"Harmonic verification failed: harm_rms={harm_rms:.5f}")
+                return False, None, "Audio lacks human voice characteristics. Please speak clearly into the microphone."
+        except Exception:
+            pass
+
+        return True, y_voiced, f"Voice successfully extracted ({voiced_duration:.1f}s voiced speech, {db:.1f} dB)"
+
+    def extract_mfcc_matrix(self, wav_bytes: bytes, n_mfcc: int = 20, require_vad: bool = True) -> tuple[Optional[np.ndarray], Optional[str]]:
+        """
+        Extracts a Cepstral Mean and Variance Normalized (CMVN) MFCC matrix from raw audio bytes.
+        If require_vad is True (used during registration), validates voice activity and extracts pure speech.
+        Returns (mfcc_matrix, error_message_if_any).
+        """
+        logger.info(f"extract_mfcc_matrix: received {len(wav_bytes)} bytes (require_vad={require_vad})")
         y = self.decode_audio(wav_bytes, target_sr=22050)
         if y is None or len(y) < 100:
             logger.error("Audio too short or could not be decoded.")
-            return None
+            return None, "Audio could not be decoded or was empty."
 
-        logger.info(f"extract_mfcc_matrix: decoded {len(y)} samples at 22050Hz (~{len(y)/22050:.2f}s)")
-        mfcc = librosa.feature.mfcc(y=y, sr=22050, n_mfcc=n_mfcc)
-        logger.info(f"extract_mfcc_matrix: MFCC shape {mfcc.shape}")
-        return mfcc
+        if require_vad:
+            is_valid, y_speech, err_msg = self.validate_and_extract_voice(y, sr=22050)
+            if not is_valid or y_speech is None:
+                return None, err_msg
+            target_y = y_speech
+        else:
+            # For live verification chunks, trim silent margins
+            try:
+                y_trimmed, _ = librosa.effects.trim(y, top_db=25)
+                target_y = y_trimmed if len(y_trimmed) > 1000 else y
+            except Exception:
+                target_y = y
+
+        logger.info(f"extract_mfcc_matrix: computing MFCC on {len(target_y)} samples (~{len(target_y)/22050:.2f}s)")
+        mfcc = librosa.feature.mfcc(y=target_y, sr=22050, n_mfcc=n_mfcc)
+
+        # Cepstral Mean Normalization (CMN) across frames
+        mfcc = mfcc - np.mean(mfcc, axis=1, keepdims=True)
+        # Unit Variance Normalization
+        std = np.std(mfcc, axis=1, keepdims=True)
+        std[std == 0] = 1e-6
+        mfcc = mfcc / std
+
+        logger.info(f"extract_mfcc_matrix: CMVN normalized MFCC shape {mfcc.shape}")
+        return mfcc.astype(np.float32), None
 
     def predict_from_wav_bytes(self, wav_bytes: bytes) -> tuple[int, float]:
         """
@@ -220,9 +325,21 @@ class ThreatPredictor:
         Supports both raw 2D matrices and profile dicts: {'matrix': [...], 'person_name': '...', 'role': '...', 'id': '...'}.
         Returns (is_match: bool, matched_profile: Optional[dict], min_distance: float).
         """
-        THRESHOLD = 0.18  # Cosine DTW distance — lower = more similar. Tunable.
+        THRESHOLD = 0.28  # Cosine DTW distance for CMVN-normalized matrices — lower = more similar.
         
-        mfcc_in = self.extract_mfcc_matrix(wav_bytes, n_mfcc=20)
+        # Check volume before running DTW
+        y = self.decode_audio(wav_bytes, target_sr=22050)
+        if y is None or len(y) < 1000:
+            return False, None, 1.0
+
+        rms = float(np.sqrt(np.mean(y**2)))
+        rms_scaled = rms * 32767.0
+        db = float(20 * np.log10(rms_scaled) if rms_scaled > 0 else 0.0)
+        if db < 45.0:
+            # Sound is below conversational speech volume — skip DTW to prevent false matches on room silence
+            return False, None, 1.0
+
+        mfcc_in, err = self.extract_mfcc_matrix(wav_bytes, n_mfcc=20, require_vad=False)
         if mfcc_in is None:
             return False, None, 1.0
 
@@ -246,6 +363,12 @@ class ThreatPredictor:
                     continue
 
                 mfcc_stored = np.array(stored_matrix, dtype=np.float32)
+                # Apply CMVN to stored matrix if raw
+                mfcc_stored = mfcc_stored - np.mean(mfcc_stored, axis=1, keepdims=True)
+                std_stored = np.std(mfcc_stored, axis=1, keepdims=True)
+                std_stored[std_stored == 0] = 1e-6
+                mfcc_stored = mfcc_stored / std_stored
+
                 D, wp = librosa.sequence.dtw(X=mfcc_in, Y=mfcc_stored, metric='cosine')
                 dist = float(D[-1, -1]) / len(wp)
                 
