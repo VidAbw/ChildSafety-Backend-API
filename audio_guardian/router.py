@@ -351,10 +351,18 @@ async def upload_audio_chunk(
     now_iso = datetime.now(timezone.utc).isoformat()
     
     # Active Presence Window (30 seconds)
-    is_active_presence = (_last_verified_speaker.get("name") is not None) and (time_since_last_speech <= 30.0)
-    current_active_speaker = _last_verified_speaker.get("name") if is_active_presence else None
-    current_speaker_role = _last_verified_speaker.get("role") if is_active_presence else None
-    presence_status = "Active Nearby" if is_active_presence else "Monitoring Area"
+    if is_parent and matched_profile:
+        time_since_last_speech = 0.0
+        is_active_presence = True
+        current_active_speaker = speaker_name
+        current_speaker_role = speaker_role
+        presence_status = "Active Nearby"
+    else:
+        time_since_last_speech = now_ts - _last_verified_speaker.get("timestamp", 0)
+        is_active_presence = (_last_verified_speaker.get("name") is not None) and (time_since_last_speech <= 30.0)
+        current_active_speaker = _last_verified_speaker.get("name") if is_active_presence else None
+        current_speaker_role = _last_verified_speaker.get("role") if is_active_presence else None
+        presence_status = "Active Nearby" if is_active_presence else "Monitoring Area"
 
     result = {
         "filename": file.filename,
@@ -377,6 +385,26 @@ async def upload_audio_chunk(
     return result
 
 
+@router.post("/check-environment")
+async def check_environment(file: UploadFile = File(...)):
+    """
+    Step 1 helper: Checks microphone input and ambient background noise level.
+    """
+    contents = await file.read()
+    res = predictor.check_acoustic_environment(contents)
+    return res
+
+
+@router.post("/validate-phrase-sample")
+async def validate_phrase_sample(file: UploadFile = File(...)):
+    """
+    Step 2 helper: Validates phrase recitation clarity, SNR, and vocal harmonics.
+    """
+    contents = await file.read()
+    res = predictor.validate_phrase_sample(contents)
+    return res
+
+
 @router.post("/register-parent")
 @router.post("/register-voice")
 async def register_parent_voice(
@@ -386,30 +414,35 @@ async def register_parent_voice(
     user_email: str = Form(None),
 ):
     """
-    Registers a voice profile by:
-      1. Validating speech presence via Voice Activity Detection (VAD)
-      2. Extracting a clean CMVN-normalized MFCC matrix
-      3. Inserting the matrix into Supabase registered_voice_profiles with user_email
-      4. Updating the local config and saving reference WAV file
+    Registers an authorized voice profile by:
+      1. Validating speech presence via multi-stage Voice Activity Detection (VAD)
+      2. Extracting a 64-dimensional Text-Independent Biometric Voiceprint Vector
+      3. Inserting the biometric vector into Supabase registered_voice_profiles with user_email
+      4. Updating local config and saving reference WAV file
     """
     contents = await file.read()
     logger.info(f"register-parent: received file '{file.filename}', size={len(contents)} bytes, content_type={file.content_type}, user_email={user_email}")
 
-    # Extract and validate voice features via VAD
-    mfcc_matrix, vad_error = predictor.extract_mfcc_matrix(contents, n_mfcc=20, require_vad=True)
-    if mfcc_matrix is None:
+    # Decode and validate voice features via VAD
+    y = predictor.decode_audio(contents, target_sr=22050)
+    if y is None or len(y) < 100:
+        return {"success": False, "error": "Audio could not be decoded or was empty."}
+
+    is_valid, y_speech, vad_error = predictor.validate_and_extract_voice(y, sr=22050)
+    if not is_valid or y_speech is None:
         logger.warning(f"Voice registration rejected for '{parent_name}': {vad_error}")
         return {
             "success": False,
             "error": vad_error or "No voice detected. Please speak clearly into the microphone for 3 to 5 seconds.",
         }
 
+    # Extract 64-dimensional Biometric Vocal Tract Voiceprint Vector
+    biometric_vec = predictor.extract_speaker_biometric_vector(y_speech, sr=22050)
+    biometric_list = biometric_vec.tolist()
+
     # Save WAV locally as fallback only after voice validation succeeds
     with open(PARENT_PROFILE_PATH, "wb") as f:
         f.write(contents)
-
-    # Convert numpy array to a plain nested list for JSON storage
-    mfcc_list = mfcc_matrix.tolist()
 
     # Deactivate any previous profiles for this person under this email before inserting new one
     try:
@@ -428,7 +461,7 @@ async def register_parent_voice(
     profile_data = {
         "person_name": parent_name,
         "role": role,
-        "dtw_feature_matrix": mfcc_list,
+        "dtw_feature_matrix": biometric_list,
         "is_active": True,
     }
     if user_email and user_email.strip():
@@ -436,17 +469,17 @@ async def register_parent_voice(
 
     try:
         db.table("registered_voice_profiles").insert(profile_data).execute()
-        logger.info(f"Voice profile for '{parent_name}' (user: {user_email}) saved to Supabase.")
+        logger.info(f"Biometric voice profile for '{parent_name}' (user: {user_email}) saved to Supabase.")
     except Exception as e:
         logger.warning(f"Insert with user_email failed: {e}. Retrying without user_email...")
         try:
             db.table("registered_voice_profiles").insert({
                 "person_name": parent_name,
                 "role": role,
-                "dtw_feature_matrix": mfcc_list,
+                "dtw_feature_matrix": biometric_list,
                 "is_active": True,
             }).execute()
-            logger.info(f"Voice profile for '{parent_name}' saved to Supabase (fallback).")
+            logger.info(f"Biometric voice profile for '{parent_name}' saved to Supabase (fallback).")
         except Exception as e2:
             logger.error(f"Supabase insert failed: {e2}")
             return {
@@ -461,11 +494,11 @@ async def register_parent_voice(
     
     return {
         "success": True,
-        "message": f"Voice profile for '{parent_name}' registered successfully.",
+        "message": f"Biometric voice profile for '{parent_name}' registered successfully.",
         "parent_name": parent_name,
         "role": role,
         "user_email": user_email,
-        "mfcc_shape": list(mfcc_matrix.shape),
+        "vector_dims": len(biometric_list),
     }
 
 
