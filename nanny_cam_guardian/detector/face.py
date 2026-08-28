@@ -18,10 +18,12 @@ from pathlib import Path
 
 import numpy as np
 
+DEEPFACE_ERROR = None
 try:
     from deepface import DeepFace
-except ImportError:
+except Exception as err:
     DeepFace = None
+    DEEPFACE_ERROR = str(err)
 
 KNOWN_FACES_DIR = Path(__file__).resolve().parent.parent / "known_faces"
 MODEL_NAME = "SFace"          # lightweight, no extra downloads after first run
@@ -61,7 +63,8 @@ class FaceRecognizer:
 
     def _load_known_faces(self) -> None:
         if DeepFace is None:
-            print("[face] deepface not installed; face recognition disabled.")
+            reason = f": {DEEPFACE_ERROR}" if DEEPFACE_ERROR else ""
+            print(f"[face] deepface not installed or failed to load{reason}; face recognition disabled.")
             return
         self._ensure_haarcascades()
         if not KNOWN_FACES_DIR.exists():
