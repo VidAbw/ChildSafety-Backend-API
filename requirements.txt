@@ -26,6 +26,8 @@ ultralytics
 mediapipe
 opencv-python
 roboflow
+deepface
+tf-keras
 
 # --- Legal RAG Backend (Vector Search & NLP) ---
 faiss-cpu

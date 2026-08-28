@@ -39,10 +39,31 @@ class FaceRecognizer:
         self._frame_count: dict[int, int] = {}       # person_idx → frames since last check
         self._load_known_faces()
 
+    def _ensure_haarcascades(self) -> None:
+        """Ensures required OpenCV Haar cascade XML files exist in cv2.data."""
+        try:
+            import urllib.request
+            import cv2
+            xml_dir = cv2.data.haarcascades
+            os.makedirs(xml_dir, exist_ok=True)
+            files = [
+                'haarcascade_frontalface_default.xml',
+                'haarcascade_eye.xml',
+            ]
+            base_url = 'https://raw.githubusercontent.com/opencv/opencv/master/data/haarcascades/'
+            for f in files:
+                dst = os.path.join(xml_dir, f)
+                if not os.path.exists(dst):
+                    print(f"[face] Downloading missing cascade {f}...")
+                    urllib.request.urlretrieve(base_url + f, dst)
+        except Exception as e:
+            print(f"[face] Could not check/download haarcascades: {e}")
+
     def _load_known_faces(self) -> None:
         if DeepFace is None:
             print("[face] deepface not installed; face recognition disabled.")
             return
+        self._ensure_haarcascades()
         if not KNOWN_FACES_DIR.exists():
             print(f"[face] known_faces folder missing: {KNOWN_FACES_DIR}")
             return

@@ -28,7 +28,7 @@ from nanny_cam_guardian.logic.threat import ThreatRuleEngine, ThreatEvent
 from nanny_cam_guardian.publisher.supabase_push import push_alert
 
 USER_ID = os.getenv("USER_ID", "default_user")
-CAMERA_INDEX = int(os.getenv("CAMERA_INDEX", "0"))
+CAMERA_INDEX = int(os.getenv("CAMERA_INDEX", "1"))
 
 # ── Colours (BGR) ─────────────────────────────────────────────────────────────
 COLOUR_ADULT   = (255, 165, 0)    # orange
