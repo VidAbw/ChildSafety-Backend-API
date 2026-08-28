@@ -1,7 +1,8 @@
 import json
-import faiss
-import numpy as np
-from sentence_transformers import SentenceTransformer
+import faiss  # type: ignore
+import numpy as np  # type: ignore
+from sentence_transformers import SentenceTransformer  # type: ignore
+
 
 # 1. Load the Legal Knowledge Base 
 with open('legal_system/legal_data.json', 'r') as f:
