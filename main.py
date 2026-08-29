@@ -37,12 +37,24 @@ try:
     rag_backend_path = os.path.join(os.path.dirname(__file__), "legal-rag-backend")
     if rag_backend_path not in sys.path:
         sys.path.insert(0, rag_backend_path)
+    
+    # Save current sys.modules['app'] state to avoid namespace collision between ChildSafety-Backend-API/app and legal-rag-backend/app
+    app_module_stash = {}
+    for k in list(sys.modules.keys()):
+        if k == 'app' or k.startswith('app.'):
+            app_module_stash[k] = sys.modules.pop(k)
+
     from app.routers.rag import router as rag_router
     from app.routers.legal import router as legal_router
     app.include_router(rag_router)
     app.include_router(legal_router)
+
+    # Restore main app modules
+    for k, v in app_module_stash.items():
+        if k not in sys.modules:
+            sys.modules[k] = v
 except Exception as e:
-    logging.warning(f"Could not load Legal RAG routers: {e}")
+    logging.error(f"Could not load Legal RAG routers: {e}", exc_info=True)
 
 
 

@@ -21,13 +21,20 @@ numpy<3.0.0
 sounddevice
 websockets>=11.0,<13.0
 
-# --- Nanny Cam Guardian (Computer Vision & Object Detection) ---
+# --- Nanny Cam Guardian (Computer Vision, Face & Object Detection) ---
 ultralytics
 mediapipe
 opencv-python
 roboflow
-deepface
+tensorflow
 tf-keras
+deepface
+pandas
+gdown
+retina-face
+mtcnn
+fire
+pillow
 
 # --- Legal RAG Backend (Vector Search & NLP) ---
 faiss-cpu
@@ -36,3 +43,4 @@ langdetect
 
 # --- Utilities & Visualization ---
 matplotlib
+

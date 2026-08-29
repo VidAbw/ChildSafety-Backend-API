@@ -83,11 +83,14 @@ class FaceRecognizer:
                     img_path=str(fp),
                     model_name=MODEL_NAME,
                     detector_backend=DETECTOR_BACKEND,
-                    enforce_detection=True,
+                    enforce_detection=False,
                 )
-                embedding = np.array(rep[0]["embedding"])
-                self._known[fp.stem] = embedding
-                print(f"[face] Loaded reference: {fp.stem}")
+                if rep and len(rep) > 0 and "embedding" in rep[0]:
+                    embedding = np.array(rep[0]["embedding"])
+                    self._known[fp.stem] = embedding
+                    print(f"[face] Loaded reference: {fp.stem}")
+                else:
+                    print(f"[face] Could not extract embedding for {fp.name}")
             except Exception as e:
                 print(f"[face] Could not encode {fp.name}: {e}")
 

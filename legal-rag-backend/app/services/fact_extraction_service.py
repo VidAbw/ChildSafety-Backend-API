@@ -228,7 +228,7 @@ def extract_all_structured_facts(query: str, language: str = None) -> dict:
             [r"\b(?:no|without|did not|never)\s+(?:sexual\s+)?(?:touch|touching|private parts|groping|fondling)\b", r"\b(?:touch|touching|groping|fondling)\s+(?:was not|did not|never occurred|is absent)\b", r"ස්පර්ශ\s+කර\s+නැත", r"ස්පර්ශයක්\s+(?:සිදු\s+)?නොවීය", r"ස්පර්ශයක්\s+නැත", r"ස්පර්ශ\s+කිරීමක්\s+(?:සිදු\s+වී\s+)?නැත"]
         ),
         "sexual_act": (
-            ["sexual act", "sexual acts", "sexual abuse", "sexual conduct", "sexual nature", "sexual violation", "grave sexual abuse", "sexual crime", "sexual assault", "sexually assaulted", "sexually assault", "sexually assaulting", "ලිංගික ක්‍රියා", "ලිංගික වධදීම", "ලිංගික අපයෝජනය", "අතවරයකට"],
+            ["sexual act", "sexual acts", "sexual abuse", "sexually abuse", "sexually abused", "sexual conduct", "sexual nature", "sexual violation", "grave sexual abuse", "sexual crime", "sexual assault", "sexually assaulted", "sexually assault", "sexually assaulting", "ලිංගික ක්‍රියා", "ලිංගික වධදීම", "ලිංගික අපයෝජනය", "අතවරයකට"],
             [r"\b(?:no|without)\s+(?:sexual\s+)?(?:acts?|abuse|assault|violation)\b", r"ලිංගික\s+ක්‍රියාවක්\s+සිදු\s+කර\s+නැත", r"ලිංගික\s+අපයෝජනයක්\s+(?:සිදු\s+වී\s+)?නැත"]
         ),
         "penetration": (
