@@ -45,6 +45,8 @@ __pycache__/
 
 # Ignore local environment variables
 .env
+.env.local
+.env*.local
 legal-rag-backend/.env
 
 # Ignore local FAISS index files
