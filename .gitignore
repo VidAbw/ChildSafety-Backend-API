@@ -25,6 +25,15 @@ knife-dataset.zip
 nanny_cam_guardian/models/*.pt
 runs/
 
+# YOLO / PyTorch model weight files (root-level and anywhere)
+*.pt
+*.pth
+*.onnx
+*.weights
+
+# Nested duplicate folder
+ChildSafety-Backend-API/
+
 # Exclude auto-generated or large audio files
 *.zip
 *.wav
@@ -34,14 +43,13 @@ runs/
 # Exclude config data
 audio_guardian_config.json
 
-# Exclude pycache globally
+# Exclude pycache globally (all levels)
+__pycache__/
 */__pycache__/
 **/__pycache__/
-**/*.pyc
-
-# Ignore Python bytecode and cache folders
-__pycache__/
 *.pyc
+**/*.pyc
+*.pyo
 
 # Ignore local environment variables
 .env
