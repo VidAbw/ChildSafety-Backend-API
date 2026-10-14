@@ -1,0 +1,20 @@
+{
+  "wifi_ssid": "SLT-Fiber-FmZU2-2.4G",
+  "wifi_password": "WnhemE4d",
+  "server_host": "192.168.1.72",
+  "server_port": 8000,
+  "server_path": "/api/audio/upload-chunk",
+  "max_wifi_retries": 20,
+  "recording_interval_ms": 200,
+  "wdt_timeout_s": 30,
+  "sample_rate": 16000,
+  "record_time_seconds": 3,
+  "dc_filter_alpha": 0.995,
+  "device_id": "esp32_guardian_01",
+  "i2s_pins": {
+    "sck": 33,
+    "ws": 25,
+    "sd": 32,
+    "led": 2
+  }
+}
