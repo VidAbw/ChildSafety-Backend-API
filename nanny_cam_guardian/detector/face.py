@@ -7,9 +7,10 @@ each face once, then on each call compares the cropped adult region against
 those embeddings. Returns the matched name or "unknown".
 
 To keep FPS reasonable we:
-    - only process adult bounding boxes (children are not recognised)
-    - re-check each tracked adult every RECOGNITION_INTERVAL_FRAMES
-    - cache the last result per person index between checks
+    - check every tracked person (children included) so a crouching/seated adult
+      can still earn the Verified_Adult identity that overrides the height rule
+    - re-check each track every RECOGNITION_INTERVAL_FRAMES
+    - cache the last result per persistent track id between checks
 """
 from __future__ import annotations
 
@@ -29,7 +30,7 @@ KNOWN_FACES_DIR = Path(__file__).resolve().parent.parent / "known_faces"
 MODEL_NAME = "SFace"          # lightweight, no extra downloads after first run
 DETECTOR_BACKEND = "opencv"   # fastest available backend
 DISTANCE_METRIC = "cosine"
-MATCH_THRESHOLD = 0.55        # cosine distance below this → match (SFace default ~0.593)
+MATCH_THRESHOLD = 0.363       # tau_face: cosine distance <= this → verified; d_cos > tau_face → unverified
 RECOGNITION_INTERVAL_FRAMES = 30   # re-check each tracked adult every ~1s @ 30fps
 CROP_PADDING = 0.15           # expand adult bbox by 15% to include full head
 
@@ -122,24 +123,24 @@ class FaceRecognizer:
 
     def identify(self, frame_bgr: np.ndarray, persons: list) -> dict[int, str]:
         """
-        Returns {person_index: label} for every adult in the frame.
-        Children are skipped. Each adult is re-checked every
-        RECOGNITION_INTERVAL_FRAMES; otherwise the cached label is reused.
+        Returns {person_index: label} for every person in the frame. Each
+        track is re-checked every RECOGNITION_INTERVAL_FRAMES (F_interval = 30);
+        otherwise the cached label is reused. Caches are keyed by the persistent
+        track_id so labels survive person-list reordering.
         """
         h, w = frame_bgr.shape[:2]
         results: dict[int, str] = {}
 
         for idx, person in enumerate(persons):
-            if person.is_child:
+            key = person.track_id if person.track_id >= 0 else -(idx + 1)
+
+            count = self._frame_count.get(key, RECOGNITION_INTERVAL_FRAMES)
+            if count < RECOGNITION_INTERVAL_FRAMES and key in self._cache:
+                results[idx] = self._cache[key]
+                self._frame_count[key] = count + 1
                 continue
 
-            count = self._frame_count.get(idx, RECOGNITION_INTERVAL_FRAMES)
-            if count < RECOGNITION_INTERVAL_FRAMES and idx in self._cache:
-                results[idx] = self._cache[idx]
-                self._frame_count[idx] = count + 1
-                continue
-
-            # Time to re-check: crop adult region with padding around the head
+            # Time to re-check: crop with beta = 15% padding around the box
             pad_x = (person.x2 - person.x1) * CROP_PADDING
             pad_y = (person.y2 - person.y1) * CROP_PADDING
             x1 = max(0, int(person.x1 - pad_x))
@@ -152,12 +153,12 @@ class FaceRecognizer:
                 continue
 
             label = self._identify_crop(crop)
-            self._cache[idx] = label
-            self._frame_count[idx] = 0
+            self._cache[key] = label
+            self._frame_count[key] = 0
             results[idx] = label
 
-        # Drop cache entries for persons no longer in frame
-        active = set(range(len(persons)))
+        # Drop cache entries for tracks no longer in frame
+        active = {p.track_id if p.track_id >= 0 else -(i + 1) for i, p in enumerate(persons)}
         for stale in list(self._cache):
             if stale not in active:
                 del self._cache[stale]

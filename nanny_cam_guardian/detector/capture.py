@@ -217,6 +217,7 @@ class NannyCamStreamer:
                 all_kp = self.pose.extract_all(frame_rgb)
                 keypoints_map = self.pose.match_to_persons(all_kp, detection.persons, frame_bgr.shape[1], frame_h)
                 face_labels = self.face.identify(frame_bgr, detection.persons)
+                self.yolo.update_identities(detection.persons, face_labels)
                 event = self.engine.evaluate(detection, keypoints_map, frame_h, timestamp, frame_width=frame_bgr.shape[1], face_labels=face_labels)
 
                 if event.level == 0:
@@ -289,6 +290,7 @@ def run():
 
             # ── 3. Face recognition (adults only, throttled) ──────────────
             face_labels = face.identify(frame_bgr, detection.persons)
+            yolo.update_identities(detection.persons, face_labels)
 
             # ── 4. Threat classification ──────────────────────────────────
             event = engine.evaluate(detection, keypoints_map, frame_h, timestamp,

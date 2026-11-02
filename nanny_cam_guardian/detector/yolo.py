@@ -8,9 +8,17 @@ HAZARD_CLASSES = {"knife", "scissors", "fork"}
 PERSON_CONF_THRESHOLD = 0.5   # confidence floor for person detection — filters out weak/
                                # partial detections (e.g. a hand alone) that would otherwise
                                # flow through as an "unrecognized person"
-CHILD_HEIGHT_RATIO = 0.75     # remembered max height < 75% of tallest remembered → child
+CHILD_HEIGHT_RATIO = 0.60     # rho: H_j_max < rho * H_ref → child (unless identity verified)
 IOU_MATCH_THRESHOLD = 0.25    # minimum IoU to link a detection to an existing track
-HEIGHT_MEMORY_FRAMES = 90     # frames to remember each person's max height (~3s at 30fps)
+HEIGHT_MEMORY_FRAMES = 90     # |W_j|: sliding window of box heights (3.0 s at 30 fps)
+TRACK_MAX_AGE_FRAMES = 30     # keep an unmatched track (and its window) alive ~1 s for occlusions
+H_FRAME_REF = 640             # reference frame height the pixel constants below are quoted at
+ADULT_REF_HEIGHT_640 = 360    # room-calibrated standing adult height at 640x640 (px)
+ADULT_REF_EMA = 0.05          # per-frame blend when a verified standing adult updates H_adult_ref
+STANDING_MAX_WH_RATIO = 0.60  # standing posture: bbox width/height below this
+EDGE_MARGIN = 0.01            # bbox touching the frame edge within this fraction = truncated
+IDENTITY_UNKNOWN = "Unknown"
+IDENTITY_VERIFIED_ADULT = "Verified_Adult"
 
 # Optional fine-tuned hazard-specialist model. If present in the project root,
 # it is loaded and used for hazards while stock yolov8s handles persons.
@@ -32,6 +40,8 @@ class PersonBox:
     y2: float
     is_child: bool = False
     confidence: float = 0.0
+    track_id: int = -1          # persistent track id assigned by PersonTracker
+    h_max: float = 0.0          # H_j_max: max box height over the sliding window (px)
 
     @property
     def width(self) -> float:
@@ -80,61 +90,143 @@ def _iou(a: PersonBox, b: PersonBox) -> float:
     return inter / (area_a + area_b - inter)
 
 
+@dataclass
+class _Track:
+    box: PersonBox
+    heights: deque = field(default_factory=lambda: deque(maxlen=HEIGHT_MEMORY_FRAMES))
+    identity: str = IDENTITY_UNKNOWN
+    missed: int = 0
+
+    @property
+    def h_max(self) -> float:
+        """H_j_max = max_{t in W_j} (y2_t - y1_t)."""
+        return max(self.heights) if self.heights else 0.0
+
+
 class PersonTracker:
     """
-    Tracks each person across frames using bbox IoU and remembers their
-    maximum height over a sliding window. Classification uses the remembered
-    max height so a sitting adult is never misclassified as a child.
+    IoU tracker with a per-person sliding-window height buffer W_j (90 frames).
+
+        H_j_max = max over W_j of box height
+        H_ref   = max(H_adult_ref, max_i H_i_max)
+        child_j = H_j_max < rho * H_ref  AND  identity_j != Verified_Adult
+
+    Anchoring on H_adult_ref keeps a lone child from being read as an adult;
+    the remembered maximum and the identity override keep a seated/crouching
+    (or SFace-verified) adult from being read as a child.
+
+    H_adult_ref is stored as a fraction of frame height so it is resolution
+    independent (360 px at 640x640 → 0.5625). It is updated whenever an
+    authorised adult is verified in standing posture.
     """
 
     def __init__(self) -> None:
-        self._max_heights: dict[int, deque] = {}   # track_id → height history
-        self._last_boxes: dict[int, PersonBox] = {} # track_id → last known box
+        self._tracks: dict[int, _Track] = {}
         self._next_id: int = 0
+        self._adult_ref_frac: float = ADULT_REF_HEIGHT_640 / H_FRAME_REF
 
-    def classify(self, persons: list[PersonBox]) -> None:
-        """Match persons to tracks, update height memory, set is_child in-place."""
-        matched_ids: dict[int, int] = {}   # person_list_index → track_id
+    # ── calibration ────────────────────────────────────────────────────────
+    def calibrate_adult_height(self, height_px: float, frame_h: float) -> None:
+        """Room-installation calibration with a measured standing-adult height."""
+        if height_px > 0 and frame_h > 0:
+            self._adult_ref_frac = height_px / frame_h
+
+    def adult_ref_height(self, frame_h: float) -> float:
+        return self._adult_ref_frac * frame_h
+
+    # ── tracking ───────────────────────────────────────────────────────────
+    def classify(self, persons: list[PersonBox], frame_h: float = H_FRAME_REF) -> None:
+        """Match persons to tracks, update windows, set track_id/h_max/is_child in-place."""
+        # One-to-one greedy association by descending IoU
+        pairs = []
+        for idx, person in enumerate(persons):
+            for tid, trk in self._tracks.items():
+                score = _iou(person, trk.box)
+                if score > IOU_MATCH_THRESHOLD:
+                    pairs.append((score, idx, tid))
+        pairs.sort(reverse=True)
+
+        matched: dict[int, int] = {}      # person idx → track id
+        used_tracks: set[int] = set()
+        for _, idx, tid in pairs:
+            if idx in matched or tid in used_tracks:
+                continue
+            matched[idx] = tid
+            used_tracks.add(tid)
 
         for idx, person in enumerate(persons):
-            best_id, best_iou = None, IOU_MATCH_THRESHOLD
-            for tid, box in self._last_boxes.items():
-                score = _iou(person, box)
-                if score > best_iou:
-                    best_iou, best_id = score, tid
-
-            if best_id is None:
-                best_id = self._next_id
+            if idx not in matched:
+                tid = self._next_id
                 self._next_id += 1
-                self._max_heights[best_id] = deque(maxlen=HEIGHT_MEMORY_FRAMES)
+                self._tracks[tid] = _Track(box=person)
+                matched[idx] = tid
+            trk = self._tracks[matched[idx]]
+            trk.heights.append(person.height)
+            trk.box = person
+            trk.missed = 0
+            person.track_id = matched[idx]
 
-            self._max_heights[best_id].append(person.height)
-            self._last_boxes[best_id] = person
-            matched_ids[idx] = best_id
+        # Age out tracks not seen this frame (window survives short occlusions)
+        for tid in list(self._tracks):
+            if tid not in used_tracks and tid not in matched.values():
+                self._tracks[tid].missed += 1
+                if self._tracks[tid].missed > TRACK_MAX_AGE_FRAMES:
+                    del self._tracks[tid]
 
-        # Drop stale tracks not seen this frame
-        active = set(matched_ids.values())
-        for tid in list(self._last_boxes):
-            if tid not in active:
-                del self._last_boxes[tid]
-                del self._max_heights[tid]
+        self._assign_classes(persons, frame_h)
 
-        # Classify using remembered max height for each person
+    def _assign_classes(self, persons: list[PersonBox], frame_h: float) -> None:
         if not persons:
             return
-        remembered = {
-            idx: max(self._max_heights[tid])
-            for idx, tid in matched_ids.items()
-        }
-        tallest_remembered = max(remembered.values())
+        h_ref = max(
+            self.adult_ref_height(frame_h),
+            max(t.h_max for t in self._tracks.values()),
+        )
+        for person in persons:
+            trk = self._tracks[person.track_id]
+            person.h_max = trk.h_max
+            person.is_child = (
+                trk.h_max < CHILD_HEIGHT_RATIO * h_ref
+                and trk.identity != IDENTITY_VERIFIED_ADULT
+            )
+
+    # ── identity feedback from SFace ───────────────────────────────────────
+    def update_identities(self, persons: list[PersonBox],
+                          labels: dict[int, str], frame_h: float) -> None:
+        """
+        Record face-verification results per track, refresh H_adult_ref from
+        verified standing adults, then re-run classification so a verified
+        adult is never labelled a child in the same frame.
+        """
         for idx, person in enumerate(persons):
-            person.is_child = remembered[idx] < tallest_remembered * CHILD_HEIGHT_RATIO
+            label = labels.get(idx)
+            trk = self._tracks.get(person.track_id)
+            if label is None or trk is None:
+                continue
+            if label == "unknown":
+                trk.identity = IDENTITY_UNKNOWN
+                continue
+            trk.identity = IDENTITY_VERIFIED_ADULT
+            if self._is_standing(person, frame_h):
+                frac = trk.h_max / frame_h
+                self._adult_ref_frac += ADULT_REF_EMA * (frac - self._adult_ref_frac)
+        self._assign_classes(persons, frame_h)
+
+    @staticmethod
+    def _is_standing(p: PersonBox, frame_h: float) -> bool:
+        if p.height <= 0:
+            return False
+        upright = (p.width / p.height) < STANDING_MAX_WH_RATIO
+        untruncated = (p.y1 > EDGE_MARGIN * frame_h
+                       and p.y2 < (1.0 - EDGE_MARGIN) * frame_h)
+        return upright and untruncated
 
 
 class YOLODetector:
     def __init__(self, model_path: str = "yolov8s.pt"):
         self.model = YOLO(model_path)
         self._tracker = PersonTracker()
+        self._frame_h: float = float(H_FRAME_REF)
 
         # Optional fine-tuned knife/hazard model — loaded only if present.
         self.hazard_model = None
@@ -172,5 +264,10 @@ class YOLODetector:
                 conf = float(box.conf[0])
                 hazards.append(HazardBox(x1, y1, x2, y2, label=label, confidence=conf))
 
-        self._tracker.classify(persons)
+        self._frame_h = float(frame.shape[0])
+        self._tracker.classify(persons, self._frame_h)
         return DetectionResult(persons=persons, hazards=hazards)
+
+    def update_identities(self, persons: list[PersonBox], face_labels: dict[int, str]) -> None:
+        """Feed SFace results back so verified adults override the height rule."""
+        self._tracker.update_identities(persons, face_labels, self._frame_h)

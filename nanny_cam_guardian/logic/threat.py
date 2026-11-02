@@ -2,22 +2,44 @@
 from dataclasses import dataclass, field
 import numpy as np
 
-from nanny_cam_guardian.detector.yolo import DetectionResult, PersonBox
+from nanny_cam_guardian.detector.yolo import DetectionResult, PersonBox, HAZARD_CONF_THRESHOLD
 from nanny_cam_guardian.detector.pose import Keypoints, NOSE, LEFT_WRIST, RIGHT_WRIST, LEFT_HIP, RIGHT_HIP
-from nanny_cam_guardian.logic.tracker import VelocityTracker
+from nanny_cam_guardian.logic.tracker import WristVelocityTracker, VelocityTracker
 
 # ── Thresholds ────────────────────────────────────────────────────────────────
-HAZARD_PROXIMITY_PX = 100       # hazard within this many pixels of child bbox → Level 1
-FALL_FRAME_THRESHOLD = 15       # consecutive frames with fall signal → Level 2 (was 30)
-FALL_ASPECT_RATIO = 1.50        # bbox width/height > this → person is lying horizontal
-FALL_DROP_VELOCITY = 180        # centroid Y px/s downward spike → sudden fall
-ABUSE_PROXIMITY_RATIO = 0.5     # adult centroid within 50% of frame height from child → Level 4
-ABUSE_VELOCITY_THRESHOLD = 450  # pixels/second wrist speed → Level 4 gate (raised to reduce false positives)
-ABUSE_MIN_DIRECTION_SCORE = 0.45  # wrist must point at least 45% toward child
-ABUSE_MIN_PROBABILITY = 0.55    # minimum combined probability score to count a frame
-ABUSE_FRAME_THRESHOLD = 6       # consecutive qualifying frames before Level 4 fires
-UNKNOWN_PERSON_FRAME_THRESHOLD = 15   # consecutive frames an adult is unknown → Level 3
-HAZARD_FRAME_THRESHOLD = 5      # consecutive frames a hazard is near a child → Level 1
+# Every spatial/kinematic threshold is a fraction of the live frame height
+# (H_frame; 640 px reference, so 0.156 → 100 px at 640p) and, where a subject
+# is involved, is additionally capped by a fraction of that subject's remembered
+# maximum height (H_child_max / H_adult_max). The effective gate is the
+# min() of the two, which keeps it perspective-invariant: a distant (small)
+# subject gets a proportionally smaller threshold, a close one never exceeds
+# the frame-normalised reference.
+H_FRAME_REF = 640
+
+# Level 1 — hazard proximity (AABB gap)
+HAZARD_PROXIMITY_FRAME = 0.156      # × H_frame            (100 px @ 640p)
+HAZARD_PROXIMITY_CHILD = 0.40       # × H_child_max
+HAZARD_MIN_CONFIDENCE = HAZARD_CONF_THRESHOLD   # c_h >= 0.60 (production floor)
+HAZARD_FRAME_THRESHOLD = 5          # F_hazard: 5 frames (166 ms)
+
+# Level 2 — child fall
+FALL_FRAME_THRESHOLD = 15           # F_fall: 15 frames (500 ms)
+FALL_ASPECT_RATIO = 1.50            # w_bbox / h_bbox > 1.50
+FALL_DROP_FRAME = 0.281             # × H_frame / s        (180 px/s @ 640p)
+FALL_DROP_CHILD = 0.72              # × H_child_max / s
+
+# Level 3 — unknown adult
+UNKNOWN_PERSON_FRAME_THRESHOLD = 15 # F_unknown: 15 frames (500 ms)
+
+# Level 4 — physical abuse (5-gate conjunction)
+ABUSE_FRAME_THRESHOLD = 6           # F_abuse: 6 frames (200 ms)
+ABUSE_VELOCITY_FRAME = 0.703        # × H_frame / s        (450 px/s @ 640p)
+ABUSE_VELOCITY_ADULT = 1.25         # × H_adult_max / s
+VELOCITY_NOISE_FRAME = 0.094        # × H_frame / s        (60 px/s @ 640p)
+ABUSE_PROXIMITY_RATIO = 0.50        # d_centroid <= 0.50 × H_frame (320 px @ 640p)
+ABUSE_MIN_DIRECTION_SCORE = 0.45    # S_d >= 0.45  (angle <= 63.26°)
+ABUSE_MIN_PROBABILITY = 0.55        # P(Abuse) >= 0.55
+ABUSE_VELOCITY_SCORE_SPAN = 3.0     # S_v saturates at 3 × the 450 px/s reference
 
 
 @dataclass
@@ -47,8 +69,8 @@ def _direction_toward(
     toward_centroid: tuple[float, float],
 ) -> float:
     """
-    Returns a score in [0, 1] representing how much the motion direction
-    points from `from_centroid` toward `toward_centroid`.
+    S_d = max(0, dot(v_hat_motion, u_hat_target)) — how much the motion
+    direction points from `from_centroid` toward `toward_centroid`.
     """
     target = np.array(toward_centroid) - np.array(from_centroid)
     norm = np.linalg.norm(target)
@@ -56,29 +78,32 @@ def _direction_toward(
         return 0.0
     target_unit = target / norm
     dot = float(np.dot(np.array(direction_vector), target_unit))
-    return max(0.0, dot)   # clamp to [0, 1]
+    return max(0.0, dot)
+
+
+def _height(p: PersonBox) -> float:
+    """Remembered max height H_j_max, falling back to the current box height."""
+    return p.h_max if p.h_max > 0 else p.height
 
 
 class ThreatRuleEngine:
     def __init__(self):
-        self._fall_counter: int = 0
-        self._abuse_counter: int = 0   # consecutive frames all abuse conditions were met
+        self._fall_counters: dict[int, int] = {}   # child track_id → consecutive fall frames
+        self._abuse_counter: int = 0   # consecutive frames all abuse gates were met
         self._unknown_counter: int = 0 # consecutive frames an unknown adult was visible
         self._hazard_counter: int = 0  # consecutive frames a hazard was near a child
-        # Trackers keyed by person index (order in DetectionResult.persons list)
-        self._trackers: dict[int, VelocityTracker] = {}
-        # Centroid Y trackers for vertical drop detection (child fall)
+        # Wrist trackers persist per track_id; `_trackers` is rebuilt every frame as
+        # person-index → tracker so the preview overlay can look velocities up by index.
+        self._wrist_trackers: dict[int, WristVelocityTracker] = {}
+        self._trackers: dict[int, WristVelocityTracker] = {}
+        # Centroid-Y trackers (child fall), keyed by track_id
         self._centroid_trackers: dict[int, VelocityTracker] = {}
 
-    def _get_centroid_tracker(self, idx: int) -> VelocityTracker:
-        if idx not in self._centroid_trackers:
-            self._centroid_trackers[idx] = VelocityTracker()
-        return self._centroid_trackers[idx]
-
-    def _get_tracker(self, idx: int) -> VelocityTracker:
-        if idx not in self._trackers:
-            self._trackers[idx] = VelocityTracker()
-        return self._trackers[idx]
+    def _prune(self, active_ids: set[int]) -> None:
+        for store in (self._wrist_trackers, self._centroid_trackers, self._fall_counters):
+            for tid in list(store):
+                if tid not in active_ids:
+                    del store[tid]
 
     def evaluate(
         self,
@@ -93,71 +118,67 @@ class ThreatRuleEngine:
         hazards = detection.hazards
         children = [p for p in persons if p.is_child]
         adults = [p for p in persons if not p.is_child]
+        H = float(frame_height)
 
-        # ── Update velocity trackers for each person ───────────────────────
-        # Convert normalised crop coords → full-frame pixel coords so that
-        # velocity is in pixels/second relative to the full frame.
+        self._prune({p.track_id for p in persons})
+
+        # ── Update dominant-wrist trackers for each person ─────────────────
+        # Landmarks are normalised to the full frame (0–1) → convert to pixels
+        # so velocity is px/s relative to the full frame.
+        self._trackers = {}
         for idx, person in enumerate(persons):
+            pair = self._wrist_trackers.setdefault(person.track_id, WristVelocityTracker())
             kp = keypoints_map.get(idx)
             if kp and kp.is_valid():
-                tracker = self._get_tracker(idx)
-                lw = kp.get(LEFT_WRIST)
-                rw = kp.get(RIGHT_WRIST)
-                best = None
-                if lw and rw:
-                    best = lw if lw[2] >= rw[2] else rw
-                elif lw:
-                    best = lw
-                elif rw:
-                    best = rw
-                if best:
-                    # Landmarks are now normalised to the full frame (0–1)
-                    px = best[0] * frame_width
-                    py = best[1] * frame_height
-                    tracker.update((px, py), timestamp)
+                lw, rw = kp.get(LEFT_WRIST), kp.get(RIGHT_WRIST)
+                pair.update(
+                    (lw[0] * frame_width, lw[1] * frame_height) if lw else None,
+                    (rw[0] * frame_width, rw[1] * frame_height) if rw else None,
+                    timestamp,
+                )
+            self._trackers[idx] = pair
 
-        # ── Level 3: Abuse suspected ───────────────────────────────────────
-        # All four gates must be satisfied for ABUSE_FRAME_THRESHOLD consecutive
-        # frames before triggering. Single-frame velocity spikes from pose jitter
-        # reset the counter immediately.
+        # ── Level 4: Physical abuse (5-gate conjunction) ───────────────────
+        # Gate 1 adult & child co-present · Gate 2 dominant-wrist V_peak above
+        # threshold and noise floor · Gate 3 centroid proximity · Gate 4
+        # directional alignment S_d · Gate 5 composite P(Abuse). All must hold
+        # for F_abuse consecutive frames; any miss resets the counter.
         abuse_condition_met = False
         best_probability = 0.0
         best_details: dict = {}
 
-        if adults and children:
+        if adults and children:                                    # Gate 1
+            noise_floor = VELOCITY_NOISE_FRAME * H
+            max_dist = ABUSE_PROXIMITY_RATIO * H
             for idx, person in enumerate(persons):
                 if person.is_child:
                     continue
-                tracker = self._get_tracker(idx)
-                velocity = tracker.get_velocity()
+                tracker = self._trackers[idx]
+                velocity = tracker.get_velocity()                  # V_peak (EMA, 10-frame window)
 
-                if velocity < ABUSE_VELOCITY_THRESHOLD:
+                v_threshold = min(ABUSE_VELOCITY_FRAME * H,
+                                  ABUSE_VELOCITY_ADULT * _height(person))
+                if velocity <= noise_floor or velocity < v_threshold:   # Gate 2
                     continue
 
                 for child in children:
                     dist = _centroid_distance(person, child)
-                    if dist > ABUSE_PROXIMITY_RATIO * frame_height:
+                    if dist > max_dist:                            # Gate 3
                         continue
 
                     direction = tracker.get_direction_vector()
                     direction_score = _direction_toward(direction, person.centroid, child.centroid)
-
-                    # Gate: wrist must be pointing toward the child
-                    if direction_score < ABUSE_MIN_DIRECTION_SCORE:
+                    if direction_score < ABUSE_MIN_DIRECTION_SCORE:    # Gate 4
                         continue
 
-                    max_dist = ABUSE_PROXIMITY_RATIO * frame_height
+                    velocity_score = min(
+                        1.0, velocity / (ABUSE_VELOCITY_SCORE_SPAN * ABUSE_VELOCITY_FRAME * H))
                     proximity_score = max(0.0, 1.0 - dist / max_dist)
-                    max_v = ABUSE_VELOCITY_THRESHOLD * 3
-                    velocity_score = min(1.0, velocity / max_v)
-
                     probability = min(
                         1.0,
-                        velocity_score * 0.5 + proximity_score * 0.3 + direction_score * 0.2,
+                        0.5 * velocity_score + 0.3 * proximity_score + 0.2 * direction_score,
                     )
-
-                    # Gate: combined probability must exceed minimum
-                    if probability < ABUSE_MIN_PROBABILITY:
+                    if probability < ABUSE_MIN_PROBABILITY:        # Gate 5
                         continue
 
                     abuse_condition_met = True
@@ -173,10 +194,10 @@ class ThreatRuleEngine:
         if abuse_condition_met:
             self._abuse_counter += 1
         else:
-            self._abuse_counter = 0   # any frame without all conditions resets
+            self._abuse_counter = 0
 
         if self._abuse_counter >= ABUSE_FRAME_THRESHOLD:
-            self._fall_counter = 0
+            self._fall_counters.clear()
             return ThreatEvent(
                 level=4,
                 type="abuse_suspected",
@@ -184,36 +205,35 @@ class ThreatRuleEngine:
                 details=best_details,
             )
 
-        # ── Level 2: Fall detected ─────────────────────────────────────────
-        # Three signals — any ONE is enough to increment the counter:
-        #   1. Bounding box aspect ratio: width > height → person lying flat
-        #   2. Nose below hips in pose (classic fall posture)
-        #   3. Sudden downward centroid velocity spike
-        for child_list_idx, child in enumerate(children):
-            # Map back to the original persons-list index for keypoints_map
+        # ── Level 2: Child fall ────────────────────────────────────────────
+        # Evaluated per child track. Signals (any one increments that track's
+        # counter; F_fall consecutive frames fire the alert):
+        #   a. bbox aspect ratio w/h > 1.50
+        #   b. postural inversion: y_nose > 0.5 * (y_left_hip + y_right_hip)
+        #   c. downward centroid-Y velocity > min(0.281*H_frame, 0.72*H_child_max)
+        fall_event = None
+        for child in children:
+            tid = child.track_id
             person_idx = persons.index(child)
             kp = keypoints_map.get(person_idx)
 
-            # ── Signal 1: aspect ratio ──────────────────────────────────────
             aspect_ratio = child.width / child.height if child.height > 0 else 0
             is_horizontal = aspect_ratio > FALL_ASPECT_RATIO
 
-            # ── Signal 2: nose below hips ───────────────────────────────────
             nose_below_hips = False
             if kp and kp.is_valid():
                 nose = kp.get(NOSE)
                 lhip = kp.get(LEFT_HIP)
                 rhip = kp.get(RIGHT_HIP)
                 if nose and lhip and rhip:
-                    hip_y = (lhip[1] + rhip[1]) / 2
-                    nose_below_hips = nose[1] > hip_y
+                    nose_below_hips = nose[1] > 0.5 * (lhip[1] + rhip[1])
 
-            # ── Signal 3: sudden vertical drop ─────────────────────────────
-            _, cy = child.centroid
-            ct = self._get_centroid_tracker(child_list_idx)
-            ct.update((0.0, cy * frame_height), timestamp)   # track Y in pixels
-            drop_velocity = ct.get_velocity()
-            is_dropping = drop_velocity > FALL_DROP_VELOCITY
+            _, cy = child.centroid               # already in full-frame pixels
+            ct = self._centroid_trackers.setdefault(tid, VelocityTracker())
+            ct.update((0.0, cy), timestamp)
+            drop_velocity = ct.get_peak_axis_velocity(axis=1, sign=1.0)   # downward only
+            drop_threshold = min(FALL_DROP_FRAME * H, FALL_DROP_CHILD * _height(child))
+            is_dropping = drop_velocity > drop_threshold
 
             triggered = []
             if is_horizontal:
@@ -224,24 +244,26 @@ class ThreatRuleEngine:
                 triggered.append("vertical_drop")
 
             if triggered:
-                self._fall_counter += 1
+                self._fall_counters[tid] = self._fall_counters.get(tid, 0) + 1
             else:
-                self._fall_counter = 0
+                self._fall_counters[tid] = 0
 
-            if self._fall_counter >= FALL_FRAME_THRESHOLD:
-                return ThreatEvent(
+            if fall_event is None and self._fall_counters[tid] >= FALL_FRAME_THRESHOLD:
+                fall_event = ThreatEvent(
                     level=2,
                     type="fall",
                     probability=1.0,
                     details={
                         "triggered_by": triggered,
-                        "fall_frames": self._fall_counter,
+                        "fall_frames": self._fall_counters[tid],
                         "aspect_ratio": round(aspect_ratio, 2),
                         "drop_velocity_px_s": round(drop_velocity, 1),
                     },
                 )
+        if fall_event:
+            return fall_event
 
-        # ── Level 3: Unknown person (face not in known_faces/) ────────────
+        # ── Level 3: Unknown adult (SFace d_cos > tau_face) ───────────────
         unknown_adults = []
         if face_labels:
             for idx, person in enumerate(persons):
@@ -269,17 +291,22 @@ class ThreatRuleEngine:
             )
 
         # ── Level 1: Hazard near child ──────────────────────────────────────
-        # Requires HAZARD_FRAME_THRESHOLD consecutive frames so a single
-        # misclassified frame (e.g. a pen mistaken for a knife) can't trigger.
+        # d_box <= min(0.156*H_frame, 0.40*H_child_max), hazard confidence
+        # >= 0.60, sustained F_hazard frames so one misclassified frame (a pen
+        # read as a knife) cannot trigger.
         hazard_hit = None
         if hazards and children:
             for hazard in hazards:
+                if hazard.confidence < HAZARD_MIN_CONFIDENCE:
+                    continue
                 for child in children:
                     dist = _box_proximity(
                         hazard.x1, hazard.y1, hazard.x2, hazard.y2,
                         child.x1, child.y1, child.x2, child.y2,
                     )
-                    if dist <= HAZARD_PROXIMITY_PX:
+                    d_max = min(HAZARD_PROXIMITY_FRAME * H,
+                                HAZARD_PROXIMITY_CHILD * _height(child))
+                    if dist <= d_max:
                         hazard_hit = (hazard, dist)
                         break
                 if hazard_hit:

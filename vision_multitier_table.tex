@@ -1,0 +1,20 @@
+\begin{table}[htbp]
+\caption{Multi-Tier Vision Threat Engine Performance and Sustain Debounce Analysis}
+\centering
+\renewcommand{\arraystretch}{0.90}
+\resizebox{\columnwidth}{!}{
+\begin{tabular}{llccccc}
+\toprule
+\textbf{Tier \& Threat Category} & \textbf{Evaluation Cohort} & \textbf{Pre-Deb. FP} & \textbf{Prec. (\%)} & \textbf{Recall (\%)} & \textbf{F1 (\%)} & \textbf{Sustain Latency} \\
+\midrule
+Tier 1: Knife Hazard Proximity & 15 Pos / 125+269 Neg & 3 & \textbf{100.0\%} & \textbf{100.0\%} & \textbf{100.00\%} & 5 frames (166.7 ms) \\
+Tier 2: Child Fall Detection & 20 Pos / 20 Neg & 15 & \textbf{100.0\%} & 90.0\%$^*$ & \textbf{94.74\%} & 15 frames (500.0 ms) \\
+Tier 3: Unknown Adult Verif. & 20 Pos / 20 Neg & 2 & \textbf{100.0\%} & \textbf{100.0\%} & \textbf{100.00\%} & 15 frames (500.0 ms) \\
+Tier 4: Suspected Child Abuse & 20 Pos / 20 Neg & 15 & \textbf{100.0\%} & \textbf{100.0\%} & \textbf{100.00\%} & 6 frames (200.0 ms) \\
+\bottomrule
+\multicolumn{7}{l}{\footnotesize $^*$Reflects 18/20 discrete fall detection under 500 ms latency; remaining 2 falls occurred under heavy sofa occlusion.} \\
+\multicolumn{7}{l}{\footnotesize Directional Gate 4 ($S_d \ge 0.45$) and debounce suppress all high-speed arm gestures (waving, clapping, swatting) to 0 FP.}
+\end{tabular}
+}
+\label{tab_vision_tiers}
+\end{table}

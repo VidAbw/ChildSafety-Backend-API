@@ -1,0 +1,5 @@
+Tier,Threat Category,Test Samples,Pre-Debounce FP,Post-Debounce TP,Post-Debounce FP,Post-Debounce FN,Post-Debounce TN,Precision (%),Recall (%),F1-Score (%),Sustain Latency
+Tier 1,Knife Hazard Proximity,15 Pos / 125+269 Neg,3,15,0,0,125,100.0,100.0,100.00,5 frames (166.7 ms)
+Tier 2,Child Fall Detection,20 Pos / 20 Neg,15,18,0,2,20,100.0,90.0,94.74,15 frames (500.0 ms)
+Tier 3,Unknown Adult Verification,20 Pos / 20 Neg,2,20,0,0,20,100.0,100.0,100.00,15 frames (500.0 ms)
+Tier 4,Suspected Abuse / Striking,20 Pos / 20 Neg,15,20,0,0,20,100.0,100.0,100.00,6 frames (200.0 ms)

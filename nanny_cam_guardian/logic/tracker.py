@@ -65,6 +65,52 @@ class VelocityTracker:
             return (0.0, 0.0)
         return tuple((diff / norm).tolist())
 
+    def get_peak_axis_velocity(self, axis: int = 1, sign: float = 1.0) -> float:
+        """
+        Peak signed velocity (px/s) along one axis (0=x, 1=y; image y grows
+        downward, so axis=1, sign=+1 is a downward speed). Opposite-direction
+        motion contributes 0, unlike get_velocity() which is a magnitude.
+        """
+        peak = 0.0
+        for i in range(1, len(self._history)):
+            (p1, t1) = self._history[i - 1]
+            (p2, t2) = self._history[i]
+            dt = t2 - t1
+            if dt <= 0:
+                continue
+            v = sign * (p2[axis] - p1[axis]) / dt
+            if v > peak:
+                peak = v
+        return peak
+
     def reset(self) -> None:
         self._history.clear()
         self._smoothed = None
+
+
+class WristVelocityTracker:
+    """
+    Independent EMA-smoothed trackers for the left and right wrist. The
+    dominant wrist (higher peak velocity over the 10-frame window) supplies
+    V_peak and the motion direction, so switching between wrists can never
+    create a fake jump in a single shared trajectory.
+    """
+
+    def __init__(self):
+        self.left = VelocityTracker()
+        self.right = VelocityTracker()
+
+    def update(self, left_xy, right_xy, timestamp: float) -> None:
+        if left_xy is not None:
+            self.left.update(left_xy, timestamp)
+        if right_xy is not None:
+            self.right.update(right_xy, timestamp)
+
+    def _dominant(self) -> VelocityTracker:
+        return self.left if self.left.get_velocity() >= self.right.get_velocity() else self.right
+
+    def get_velocity(self) -> float:
+        return self._dominant().get_velocity()
+
+    def get_direction_vector(self) -> tuple[float, float]:
+        return self._dominant().get_direction_vector()

@@ -44,11 +44,19 @@ class Keypoints:
     def get(self, index: int) -> tuple[float, float, float] | None:
         if self.landmarks is None:
             return None
-        lm = self.landmarks[index]
-        return lm.x, lm.y, lm.visibility
+        try:
+            lm = self.landmarks[index]
+        except (IndexError, KeyError):
+            return None
+        if hasattr(lm, "x"):
+            return lm.x, lm.y, getattr(lm, "visibility", 1.0)
+        elif isinstance(lm, (tuple, list)) and len(lm) >= 2:
+            vis = lm[2] if len(lm) >= 3 else 1.0
+            return (lm[0], lm[1], vis)
+        return None
 
     def is_valid(self) -> bool:
-        return self.landmarks is not None
+        return self.landmarks is not None and len(self.landmarks) > 0
 
 
 class PoseEstimator:
