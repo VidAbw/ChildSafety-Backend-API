@@ -1,0 +1,21 @@
+\begin{table*}[htbp]
+\centering
+\caption{Empirical Validation of the 64-D Biometric Speaker Verification Gate and Context-Safe Pediatric Distress Arbitration ($\theta_{\text{biometric}} = 0.125$, $R_{\text{scream}}$ Veto $= 0.22$).}
+\label{tab:anti_fatigue_validation}
+\resizebox{\textwidth}{!}{
+\begin{tabular}{llcccccll}
+\toprule
+\textbf{Test ID} & \textbf{Acoustic Scenario} & \textbf{$L_{\text{SPL}}$ (dB)} & \textbf{Raw Model} & \textbf{$P(\text{Threat})$} & \textbf{$R_{\text{scream}}$} & \textbf{Cosine Distance $\text{Dist}(\mathbf{u},\mathbf{v})$} & \textbf{\texttt{MatchParent}} & \textbf{Arbitration Outcome \& System Action} \\
+\midrule
+TC-AF-01 & Loud TV Action + Caregiver Speech ($+5\text{ dB}$ SNR) & 89.4 & Class 1 (Threat) & 0.88 & 0.09 & $0.082 \le 0.125$ & \texttt{True} & \textbf{Contextualized\_Safe} (Push Suppressed) \\
+TC-AF-02 & Parent Shouting Across Hallway (High Intensity) & 85.2 & Class 1 (Threat) & 0.92 & 0.14 & $0.074 \le 0.125$ & \texttt{True} & \textbf{Contextualized\_Safe} (Push Suppressed) \\
+TC-AF-03 & Vacuum Cleaner + Caregiver Speech ($0\text{ dB}$ SNR) & 81.8 & Class 1 (Threat) & 0.79 & 0.07 & $0.091 \le 0.125$ & \texttt{True} & \textbf{Contextualized\_Safe} (Push Suppressed) \\
+TC-AF-04 & Parent Cheering / Playful Laughter & 87.6 & Class 1 (Threat) & 0.85 & 0.11 & $0.068 \le 0.125$ & \texttt{True} & \textbf{Contextualized\_Safe} (Push Suppressed) \\
+TC-AF-05 & High-Volume Storytelling / Vocal Play & 83.1 & Class 1 (Threat) & 0.81 & 0.08 & $0.085 \le 0.125$ & \texttt{True} & \textbf{Contextualized\_Safe} (Push Suppressed) \\
+TC-AF-06 & Pediatric Distress Scream (Unattended Fall) & 78.4 & Class 1 (Threat) & 0.96 & 0.41 & $0.342 > 0.125$ & \texttt{False} & \textbf{Threat} $\to$ Emergency Alert Dispatched \\
+TC-AF-07 & Pure Vacuum Cleaner Noise (No Speech) & 81.2 & Class 0 (Safe) & 0.12 & 0.05 & $1.000$ (VAD/Biometric Rejected) & \texttt{False} & \textbf{Safe} (VAD/HPSS Rejected; \texttt{Match=False}) \\
+TC-AF-08 & Child Distress Scream + Caregiver Shouting Overlay & 88.7 & Class 1 (Threat) & 0.97 & \textbf{0.36} & $0.088 \le 0.125$ & \texttt{True} & \textbf{Threat} (Blocked by $R_{\text{scream}}$ Veto $\to$ Emergency Alert Dispatched) \\
+\bottomrule
+\end{tabular}
+}
+\end{table*}

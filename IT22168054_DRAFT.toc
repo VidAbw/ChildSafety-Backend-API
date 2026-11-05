@@ -1,0 +1,67 @@
+\babel@toc {english}{}\relax 
+\contentsline {chapter}{DECLARATION AND SUPERVISOR CERTIFICATION}{ii}{chapter*.1}%
+\contentsline {chapter}{ABSTRACT}{iv}{chapter*.3}%
+\contentsline {chapter}{ACKNOWLEDGEMENTS}{vi}{chapter*.4}%
+\contentsline {chapter}{LIST OF ABBREVIATIONS}{xii}{chapter*.8}%
+\contentsline {chapter}{\numberline {1}INTRODUCTION}{1}{chapter.1}%
+\contentsline {section}{\numberline {1.1}Overall Project Context}{1}{section.1.1}%
+\contentsline {section}{\numberline {1.2}Individual Component Context: The Audio Guardian}{2}{section.1.2}%
+\contentsline {section}{\numberline {1.3}Problem Statement}{3}{section.1.3}%
+\contentsline {section}{\numberline {1.4}Research Gap}{3}{section.1.4}%
+\contentsline {section}{\numberline {1.5}Aim and Objectives}{4}{section.1.5}%
+\contentsline {section}{\numberline {1.6}Research Questions}{4}{section.1.6}%
+\contentsline {section}{\numberline {1.7}Scope, Limitations, and Assumptions}{5}{section.1.7}%
+\contentsline {section}{\numberline {1.8}Individual Contribution}{5}{section.1.8}%
+\contentsline {section}{\numberline {1.9}Thesis Structure}{6}{section.1.9}%
+\contentsline {chapter}{\numberline {2}LITERATURE REVIEW AND RELATED WORK}{7}{chapter.2}%
+\contentsline {section}{\numberline {2.1}Review Method and Scope}{7}{section.2.1}%
+\contentsline {section}{\numberline {2.2}Domain and Theoretical Foundations}{8}{section.2.2}%
+\contentsline {subsection}{\numberline {2.2.1}Acoustic Bio-Mechanics of Pediatric Dysphonia and Deterministic Chaos}{8}{subsection.2.2.1}%
+\contentsline {subsection}{\numberline {2.2.2}Digital Signal Processing and Multi-Spectral Parameterization}{9}{subsection.2.2.2}%
+\contentsline {subsection}{\numberline {2.2.3}TinyML Paradigms and Computational Intractability of Dense 2D-CNNs}{10}{subsection.2.2.3}%
+\contentsline {section}{\numberline {2.3}Related Research in Acoustic Surveillance}{10}{section.2.3}%
+\contentsline {subsection}{\numberline {2.3.1}Speech Emotion Recognition and Convolutional Recurrent Networks}{10}{subsection.2.3.1}%
+\contentsline {subsection}{\numberline {2.3.2}Critique of Infant Cry and Distress Corpora}{11}{subsection.2.3.2}%
+\contentsline {section}{\numberline {2.4}Existing Commercial Systems and Vulnerabilities}{11}{section.2.4}%
+\contentsline {subsection}{\numberline {2.4.1}Commercial Baby Monitors, Intensity Bias, and Alert Fatigue}{11}{subsection.2.4.1}%
+\contentsline {subsection}{\numberline {2.4.2}Cloud-Connected Smart Monitors and Privacy Violations}{12}{subsection.2.4.2}%
+\contentsline {section}{\numberline {2.5}Gap Synthesis and Conceptual Framework}{12}{section.2.5}%
+\contentsline {chapter}{\numberline {3}RESEARCH METHODOLOGY}{13}{chapter.3}%
+\contentsline {section}{\numberline {3.1}Research Design}{13}{section.3.1}%
+\contentsline {section}{\numberline {3.2}Acoustic Datasets and Partitioning Protocol}{13}{section.3.2}%
+\contentsline {subsection}{\numberline {3.2.1}Dataset Taxonomy and Binary Mapping}{13}{subsection.3.2.1}%
+\contentsline {subsection}{\numberline {3.2.2}Stratified Train-Test Partition and 100-Sample Benchmark Isolation}{14}{subsection.3.2.2}%
+\contentsline {subsection}{\numberline {3.2.3}SpecAugment Data Augmentation}{15}{subsection.3.2.3}%
+\contentsline {section}{\numberline {3.3}Signal Processing Pipeline and Framing Parameters}{15}{section.3.3}%
+\contentsline {section}{\numberline {3.4}Volatile DMA Zero-Overwriting Purge Routine}{16}{section.3.4}%
+\contentsline {section}{\numberline {3.5}Measures and Evaluation Metrics}{17}{section.3.5}%
+\contentsline {chapter}{\numberline {4}PRODUCT AND SOLUTION DESIGN}{19}{chapter.4}%
+\contentsline {section}{\numberline {4.1}System Architecture Overview}{19}{section.4.1}%
+\contentsline {section}{\numberline {4.2}Dual-Backend Fallback Strategy and Failover Logic}{21}{section.4.2}%
+\contentsline {section}{\numberline {4.3}Detailed Biometric Design and Cosine Distance Verification}{21}{section.4.3}%
+\contentsline {subsection}{\numberline {4.3.1}Mathematical Formulation of the 64-Dimensional Biometric Embedding}{23}{subsection.4.3.1}%
+\contentsline {chapter}{\numberline {5}IMPLEMENTATION, INTEGRATION, AND TESTING}{25}{chapter.5}%
+\contentsline {section}{\numberline {5.1}Development Environment and Hardware Architecture}{25}{section.5.1}%
+\contentsline {section}{\numberline {5.2}Backend REST API Endpoint Specification}{26}{section.5.2}%
+\contentsline {section}{\numberline {5.3}Verification, Integration, and Software Testing}{26}{section.5.3}%
+\contentsline {chapter}{\numberline {6}RESULTS AND VALIDATION}{27}{chapter.6}%
+\contentsline {section}{\numberline {6.1}Empirical Research Results: Confusion Matrix and Classification Metrics}{27}{section.6.1}%
+\contentsline {section}{\numberline {6.2}Comparative Baseline Architecture Benchmark}{28}{section.6.2}%
+\contentsline {section}{\numberline {6.3}ROC and Precision-Recall Evaluation}{29}{section.6.3}%
+\contentsline {section}{\numberline {6.4}Illustrative Field Scenario Trials (Anti-Fatigue Gating Validation)}{30}{section.6.4}%
+\contentsline {section}{\numberline {6.5}Measured End-to-End Latency Breakdown}{30}{section.6.5}%
+\contentsline {chapter}{\numberline {7}DISCUSSION}{31}{chapter.7}%
+\contentsline {section}{\numberline {7.1}Interpretation of Findings and Ablation Progression}{31}{section.7.1}%
+\contentsline {subsection}{\numberline {7.1.1}Mechanism of Biometric False-Alarm Elimination}{31}{subsection.7.1.1}%
+\contentsline {subsection}{\numberline {7.1.2}Statistical Bounds and Binomial Confidence Intervals}{32}{subsection.7.1.2}%
+\contentsline {section}{\numberline {7.2}Answers to Research Questions}{33}{section.7.2}%
+\contentsline {section}{\numberline {7.3}Threats to Validity and Limitations}{33}{section.7.3}%
+\contentsline {chapter}{\numberline {8}COMMERCIALISATION AND SUSTAINABILITY}{34}{chapter.8}%
+\contentsline {section}{\numberline {8.1}Value Proposition and Commercial Positioning}{34}{section.8.1}%
+\contentsline {section}{\numberline {8.2}Harmonized Uplink Bandwidth Analysis}{35}{section.8.2}%
+\contentsline {section}{\numberline {8.3}Business Model and Sustainable Development Goals}{36}{section.8.3}%
+\contentsline {chapter}{\numberline {9}CONCLUSION AND FUTURE DIRECTIONS}{37}{chapter.9}%
+\contentsline {section}{\numberline {9.1}Conclusion}{37}{section.9.1}%
+\contentsline {section}{\numberline {9.2}Achievement of Objectives}{38}{section.9.2}%
+\contentsline {section}{\numberline {9.3}Future Directions}{38}{section.9.3}%
+\contentsline {chapter}{APPENDICES}{43}{chapter*.23}%

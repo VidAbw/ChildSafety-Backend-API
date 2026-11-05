@@ -60,13 +60,25 @@ assert dist_stranger > 0.055, f"Intruder must be rejected! Got {dist_stranger:.4
 print("[OK] Biometric discrimination test passed: Parent recognized, Intruder rejected!")
 
 print("\n=== 4. TESTING SUPABASE ACTIVE PROFILE COMPATIBILITY ===")
-res = db.table('registered_voice_profiles').select('*').eq('is_active', True).execute()
-print(f"Found {len(res.data)} active profiles in Supabase.")
-if len(res.data) > 0:
-    p = res.data[0]
-    print(f"Profile 0: Name={p['person_name']}, Role={p['role']}, Email={p.get('user_email')}")
-    # Test verify_speaker_biometrics against actual profile
-    is_match, matched, dist = predictor.verify_speaker_biometrics(speech_bytes, res.data)
-    print(f"Verification test against Supabase profiles: match={is_match}, dist={dist:.4f}")
+try:
+    res = db.table('registered_voice_profiles').select('*').eq('is_active', True).execute()
+    print(f"Found {len(res.data)} active profiles in Supabase.")
+    if len(res.data) > 0:
+        p = res.data[0]
+        print(f"Profile 0: Name={p['person_name']}, Role={p['role']}, Email={p.get('user_email')}")
+        is_match, matched, dist = predictor.verify_speaker_biometrics(speech_bytes, res.data)
+        print(f"Verification test against Supabase profiles: match={is_match}, dist={dist:.4f}")
+except Exception as e:
+    print(f"Supabase remote check skipped (offline/unreachable: {e})")
+    # Test verify_speaker_biometrics locally with mock profile
+    mock_profile = [{
+        "person_name": "Test Parent",
+        "role": "Mother",
+        "user_email": "test@example.com",
+        "voice_embedding": vec_parent.tolist(),
+        "is_active": True
+    }]
+    is_match, matched, dist = predictor.verify_speaker_biometrics(speech_bytes, mock_profile)
+    print(f"Mock profile verification test: match={is_match}, dist={dist:.4f}")
 
 print("\n>>> ALL BIOMETRIC SYSTEM TESTS PASSED SUCCESSFULLY! <<<")

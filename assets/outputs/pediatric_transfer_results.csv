@@ -1,0 +1,4 @@
+Experiment ID,Model Topology,Training Domain,Evaluation Regime,Accuracy (%),Threat Precision (%),Threat Recall (%),F1-Score (%),False Alarm Rate (%),Specificity (%),ROC-AUC,PR-AUC,TP,FP,TN,FN
+Exp A,Static 1D-CNN (40ch MFCC),RAVDESS (Adult Speech),Zero-Shot Pediatric Transfer,73.77049180327869,95.74468085106383,49.45054945054945,65.21739130434783,2.1739130434782608,97.82608695652173,0.7024605828953655,0.7878608503921412,45,2,90,46
+Exp B,AudioThreatNet (120ch Dynamic),RAVDESS (Adult Speech),Zero-Shot Pediatric Transfer,75.40983606557377,96.0,52.74725274725275,68.08510638297872,2.1739130434782608,97.82608695652173,0.8113951266125179,0.8404725821257113,48,2,90,43
+Exp C,AudioThreatNet (120ch Dynamic),Pediatric Donate-a-Cry (80%),"Domain-Calibrated (15 Ep, Cost Loss)",100.0,100.0,100.0,100.0,0.0,100.0,1.0,0.9999999999999998,91,0,92,0

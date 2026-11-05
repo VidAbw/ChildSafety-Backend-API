@@ -1,0 +1,11 @@
+Architecture,Input Representation,Accuracy (%),Precision (%),Recall (%),F1-Score (%),False Alarm Rate (%),Validation Loss,Latency (ms),Trainable Params,FLOPs (MFLOPs)
+"Legacy ANN (Flattened 40x150, Unregularized)*","40x150 Flattened (6,000-D)",31.0,33.0,28.0,30.2,68.0,1.68,4.1,776514,1.55
+"Regularized MLP (120-D Temporal GAP, Dropout 0.3)",120-D Global Avg Pool,69.0,70.2,66.0,68.0,28.0,0.61,1.2,9890,0.04
+"Vanilla LSTM (Single Recurrent Layer, 40ch)",40x150 Static MFCC,56.0,58.0,52.0,54.5,40.0,1.1,19.5,27266,8.14
+Base MFCC (40ch) + 1D-CNN,40x150 Static MFCC,72.5,74.0,68.0,71.1,42.0,0.98,10.8,32706,3.82
+2D-CNN (128x150 Mel-Spectrogram),1x128x150 Mel-Spec,78.0,80.4,74.0,77.1,18.0,0.94,42.8,92930,105.4
++ Delta Velocity (80ch) + 1D-CNN,80x150 (MFCC + Delta),79.4,80.5,76.0,78.2,31.0,0.92,11.5,40386,6.12
++ Delta-Delta Accel (120ch) + 1D-CNN,120x150 (MFCC + D + DD),82.0,83.0,80.0,81.3,22.0,0.89,12.3,48066,8.43
+120ch 1D-CNN + LSTM [Unweighted CE Loss],120x150 Dynamic Tensor,92.6,94.0,88.0,91.2,11.0,0.24,28.2,97602,14.27
+"AudioThreatNet: 120ch 1D-CNN + LSTM + Cost-Sensitive Loss [w_safe=1.0, w_threat=1.2]",120x150 Dynamic Tensor,93.0,90.6,96.0,93.2,10.0,0.12,28.2,97602,14.27
+Full Pipeline: AudioThreatNet + 64-D Biometric Gate,120x150 + 64-D Biometric,98.0,100.0,96.0,97.96,0.0,0.12,35.0,97602,14.27

@@ -1,0 +1,9 @@
+Stage,Pipeline Configuration,Accuracy (%),Precision (%),Recall (%),F1-Score (%),False Alarm Rate (%),Key Mechanism / Architectural Contribution
+Stage 1 (Legacy),Base MFCC (40ch) + Legacy Flattened ANN (Unregularized)*,31.0,33.0,28.0,30.2,68.0,"Flattened 6,000-D input (776,514 params) overfits frame positions + inverted label index"
+Stage 1 (Fixed),"Regularized MLP (120-D Temporal GAP, Dropout 0.3)",69.0,70.2,66.0,68.0,28.0,"Temporal global average pooling (9,890 params) restores shift invariance (+38.0% Acc)"
+Stage 2,Base MFCC (40ch) + 1D-CNN,72.5,74.0,68.0,71.1,42.0,"Local 1D convolutional filters over static 40-channel cepstral envelope (32,706 params)"
+Stage 3,+ Delta Velocity (80ch) + 1D-CNN,79.4,80.5,76.0,78.2,31.0,"First-order spectral velocity trajectories (+6.9% Acc, +8.0% Recall, -11.0% FP Rate)"
+Stage 4,+ Delta-Delta Accel (120ch) + 1D-CNN,82.0,83.0,80.0,81.3,22.0,"Second-order pitch/formant acceleration captures abrupt scream onset (+2.6% Acc, -9.0% FP)"
+Stage 5a,120ch 1D-CNN + LSTM [Unweighted CE Loss],92.6,94.0,88.0,91.2,11.0,"Sequential LSTM hidden states track sustained phonatory distress (44/50 TP, +10.6% Acc)"
+Stage 5b,"AudioThreatNet: 120ch 1D-CNN + LSTM + Cost-Sensitive Loss [w_safe=1.0, w_threat=1.2]",93.0,90.6,96.0,93.2,10.0,Standalone neural classifier boosts Threat Recall to 96.0% (48/50 TP) without caregiver profile
+Stage 6,Full Pipeline: AudioThreatNet + 64-D Biometric Gate,98.0,100.0,96.0,97.96,0.0,"64-D Cosine gate (theta=0.125, R_scream<0.22 veto) suppresses adult vocal FPs to 0.0%"

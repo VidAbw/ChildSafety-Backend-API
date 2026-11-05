@@ -1,0 +1,12 @@
+Trial Category,Count (N),Mean Cosine Dist,Std Cosine Dist,Operating Threshold (theta_bio),FAR at 0.125 (%),FRR at 0.125 (%),TAR / Match Rate at 0.125 (%),EER (%),EER Threshold (theta_EER)
+Genuine Trials (All Held-Out Vocalizations),240,0.0876,0.0393,0.125,,14.58,85.42,7.82,0.1475
+Genuine Trials (Normal/Conversational Vocalizations),200,0.0815,0.0356,0.125,,10.0,90.0,,
+Genuine Trials (High-Intensity Angry/Shouting Vocalizations),40,0.1184,0.0424,0.125,,37.5,62.5,,
+Zero-Effort Speaker Impostor Trials (Other 23 Actors),6900,0.2288,0.0611,0.125,3.03,,3.03,7.82,0.1475
+Non-Speech Environmental Impostor Trials (All 80 Pure ESC-50 Clips x 5 Profiles),400,1.0,0.0,0.125,0.0,,0.0,0.0,
+Pure Vacuum Cleaner Noise (16 ESC-50 Clips x 5 Profiles - No Speech),80,1.0,0.0,0.125,0.0,,0.0,0.0,
+Pure Television Noise (16 ESC-50 Clips x 5 Profiles - No Speech),80,1.0,0.0,0.125,0.0,,0.0,0.0,
+Mixed Overlay: Caregiver Speech + Television Action (+0 dB SNR),25,0.0891,0.0293,0.125,,16.0,84.0,,
+Mixed Overlay: Caregiver Speech + Television Action (+5 dB SNR),25,0.0748,0.0281,0.125,,4.0,96.0,,
+Mixed Overlay: Caregiver Speech + Vacuum Cleaner (+0 dB SNR),25,0.0905,0.0317,0.125,,16.0,84.0,,
+Mixed Overlay: Caregiver Speech + Vacuum Cleaner (+5 dB SNR),25,0.0757,0.0295,0.125,,8.0,92.0,,

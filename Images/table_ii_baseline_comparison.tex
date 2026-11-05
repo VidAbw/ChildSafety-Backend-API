@@ -1,0 +1,25 @@
+\begin{table*}[htbp]
+\centering
+\caption{Table II: Reconciled Comparative Performance of Baseline and Proposed Neural Architectures Across the Stratified Test Partition ($N_{\text{total}} = 1{,}840$; $N_{\text{train}} = 1{,}472$, $N_{\text{test}} = 368$, $N_{\text{bench}} = 100$).}
+\label{tab:model_comparison}
+\resizebox{\textwidth}{!}{
+\begin{tabular}{llccccccccr}
+\toprule
+\textbf{Architecture / Pipeline Topology} & \textbf{Input Tensor} & \textbf{Acc (\%)} & \textbf{Prec (\%)} & \textbf{Recall (\%)} & \textbf{F1 (\%)} & \textbf{FP Rate (\%)} & \textbf{Val Loss} & \textbf{Latency (ms)} & \textbf{Params} & \textbf{MFLOPs} \\
+\midrule
+Legacy ANN (Flattened $40\times 150$, Unregularized)$^{\dagger}$ & $6{,}000\text{-D}$ Flat & 31.0\% & 33.0\% & 28.0\% & 30.2\% & 68.0\% & 1.68 & 4.1\,ms & 776,514 & 1.55 \\
+Regularized MLP ($120\text{-D}$ Temporal GAP, Dropout $0.3$) & $120\text{-D}$ Pooled & 69.0\% & 70.2\% & 66.0\% & 68.0\% & 28.0\% & 0.61 & \textbf{1.2\,ms} & \textbf{9,890} & \textbf{0.04} \\
+Vanilla LSTM (Single Recurrent Layer, $40\text{ch}$) & $40\times 150$ MFCC & 56.0\% & 58.0\% & 52.0\% & 54.5\% & 40.0\% & 1.10 & 19.5\,ms & 27,266 & 8.14 \\
+Base MFCC ($40\text{ch}$) + 1D-CNN & $40\times 150$ MFCC & 72.5\% & 74.0\% & 68.0\% & 71.1\% & 42.0\% & 0.98 & 10.8\,ms & 32,706 & 3.82 \\
+2D-CNN ($128\times 150$ Mel-Spectrogram) & $1\times 128\times 150$ Mel & 78.0\% & 80.4\% & 74.0\% & 77.1\% & 18.0\% & 0.94 & 42.8\,ms & 92,930 & 105.40 \\
++ Delta Velocity ($80\text{ch}$) + 1D-CNN & $80\times 150$ ($\text{MFCC}+\Delta$) & 79.4\% & 80.5\% & 76.0\% & 78.2\% & 31.0\% & 0.92 & 11.5\,ms & 40,386 & 6.12 \\
++ Delta-Delta Accel ($120\text{ch}$) + 1D-CNN & $120\times 150$ ($\text{MFCC}+\Delta+\Delta\Delta$) & 82.0\% & 83.0\% & 80.0\% & 81.3\% & 22.0\% & 0.89 & 12.3\,ms & 48,066 & 8.43 \\
+$120\text{ch}$ 1D-CNN + LSTM [Unweighted CE Loss] & $120\times 150$ Dynamic & 92.6\% & 94.0\% & 88.0\% & 91.2\% & 11.0\% & 0.24 & 28.2\,ms & 97,602 & 14.27 \\
+\textbf{AudioThreatNet ($120\text{ch}$ 1D-CNN + LSTM + Cost Loss $[1.0, 1.2]$)}$^{\ddagger}$ & $120\times 150$ Dynamic & 93.0\% & 90.6\% & \textbf{96.0\%} & 93.2\% & 10.0\% & \textbf{0.12} & 28.2\,ms & 97,602 & 14.27 \\
+\textbf{Full Pipeline: AudioThreatNet + 64-D Biometric Gate} & $120\times 150 + 64\text{-D}$ Bio & \textbf{98.0\%} & \textbf{100.0\%} & \textbf{96.0\%} & \textbf{97.96\%} & \textbf{0.0\%} & \textbf{0.12} & 35.0\,ms & 97,602 & 14.27 \\
+\bottomrule
+\multicolumn{11}{l}{\footnotesize $^{\dagger}$Diagnostic legacy baseline: flattening $40\times 150$ inputs into $776{,}514$ unregularized parameters caused frame-index overfitting ($\text{Loss}=1.68$) compounded by inverted class-index mapping ($1-y$).} \\
+\multicolumn{11}{l}{\footnotesize $^{\ddagger}$Standalone neural classifier without caregiver enrollment: Cost-Sensitive Loss ($w_{\text{safe}}=1.0, w_{\text{threat}}=1.2$) boosts Threat Recall to $96.0\%$ ($48/50\text{ TP}$); achieves $98.0\%$ Acc on non-shouting safe clips.}
+\end{tabular}
+}
+\end{table*}

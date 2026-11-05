@@ -194,11 +194,13 @@ async def stop_audio_listener() -> dict:
 @router.post("/upload-chunk")
 async def upload_audio_chunk(
     file: UploadFile = File(...),
-    device_info: str = Form("unknown")
+    device_info: str = Form("unknown"),
+    vision_tier: int = Form(0),
 ):
     """
     Endpoint for the ESP32 microcontroller to upload 3-second audio chunks.
-    Runs the 1D-CNN + LSTM model and triggers a Supabase alert if it's a Threat.
+    Runs the 1D-CNN + LSTM threat model, calibrated INMP441 SPL analysis,
+    64-D standardized biometric caregiver verification, and pediatric distress band arbitration.
     """
     contents = await file.read()
     config = get_config()
@@ -250,30 +252,37 @@ async def upload_audio_chunk(
     try:
         y = predictor.decode_audio(contents, target_sr=22050)
         if y is not None and len(y) > 0:
-            rms = np.sqrt(np.mean(y**2))
-            rms_scaled = rms * 32767.0
-            amplitude_db = float(20 * np.log10(rms_scaled) if rms_scaled > 0 else 0.0)
+            rms_float, L_dBFS, L_SPL = predictor.compute_calibrated_spl(y)
         else:
-            amplitude_db = 0.0
+            rms_float, L_dBFS, L_SPL = 0.0, -180.0, 0.0
     except Exception:
-        amplitude_db = 0.0
+        rms_float, L_dBFS, L_SPL = 0.0, -180.0, 0.0
+
+    amplitude_db = L_SPL
+    logger.info(f"Audio chunk level: L_dBFS={L_dBFS:.2f} dBFS, L_SPL={L_SPL:.2f} dB SPL (calibrated INMP441)")
 
     # ── 2. Run the Deep Learning Model ───────────────────────
     class_id, probability = predictor.predict_from_wav_bytes(contents)
     class_id = int(class_id)
     probability = float(probability)
-    
+
+    # ── Compute High-Frequency Pediatric Distress Band Energy Ratio ──
+    # R_scream = sum(P[2500 Hz : 5000 Hz]) / sum(P[20 Hz : 8000 Hz])
+    R_scream = predictor.compute_scream_ratio(y, sr=22050) if y is not None else 0.0
+    logger.info(f"Pediatric distress band energy ratio R_scream={R_scream:.4f}")
+
     status_msg = "Safe"
     mitigation_msg = None
     is_parent = False
+    dtw_dist = 1.0
 
-    # ── 3. Parent Voice Verification (DTW) ───────────────────
+    # ── 3. Parent Voice Verification ─────────────────────────
     matched_profile = None
     import time
     now_ts = time.time()
 
-    # Lower execution threshold to 40.0 dB (conversational speech) or when AI predicts threat
-    if amplitude_db >= 40.0 or class_id == 1:
+    # Caregiver voice match evaluation threshold: L_SPL >= 65.0 dB SPL (-55.0 dBFS) or class_id == 1
+    if L_SPL >= 65.0 or class_id == 1:
         stored_profiles = get_registered_mfcc_profiles()
         if stored_profiles:
             is_parent, matched_profile, dtw_dist = predictor.verify_parent_from_matrix(contents, stored_profiles)
@@ -290,19 +299,24 @@ async def upload_audio_chunk(
                         db.table("registered_voice_profiles").update({"last_verified": now_iso}).eq("id", matched_profile["id"]).execute()
                     except Exception as e:
                         logger.debug(f"Could not update last_verified in Supabase: {e}")
-            logger.info(f"Supabase profile verification: {'MATCH (' + str(matched_profile.get('name') if matched_profile else '') + ')' if is_parent else 'no match'}")
+            logger.info(f"Supabase profile verification: {'MATCH (' + str(matched_profile.get('name') if matched_profile else '') + ')' if is_parent else 'no match'}, dist={dtw_dist:.4f}")
         else:
             # Fallback: local WAV file (backward compatibility)
             is_parent = predictor.verify_parent(contents, PARENT_PROFILE_PATH)
             if is_parent:
+                dtw_dist = 0.05
                 matched_profile = {"name": parent_name, "role": "Parent", "id": None}
                 _last_verified_speaker = {"name": parent_name, "role": "Parent", "timestamp": now_ts}
                 logger.info("Parent verified via local WAV fallback.")
 
+    # Caregiver Voice Match: Dist <= 0.125 and L_SPL >= 65.0 dB SPL (-55.0 dBFS)
+    match_caregiver = bool(is_parent and dtw_dist <= 0.125 and L_SPL >= 65.0)
+
     # ── Presence Memory Hysteresis (15-Second Grace Window for speech continuation) ──
     time_since_last_speech = now_ts - _last_verified_speaker.get("timestamp", 0)
-    if not is_parent and time_since_last_speech < 15.0 and amplitude_db >= 40.0 and class_id == 0:
+    if not match_caregiver and time_since_last_speech < 15.0 and L_SPL >= 65.0 and class_id == 0:
         if _last_verified_speaker.get("name"):
+            match_caregiver = True
             is_parent = True
             matched_profile = {
                 "name": _last_verified_speaker.get("name"),
@@ -315,34 +329,91 @@ async def upload_audio_chunk(
     speaker_role = (matched_profile.get("role") if matched_profile else None) or "Parent"
     speaker_display = f"{speaker_name} ({speaker_role})" if matched_profile else speaker_name
 
-    # ── 4. Intensity Override (compensates for overfitted model) ─
-    if class_id == 0 and amplitude_db > 80.0:
+    # ── 4. Intensity Override (80.0 dB SPL corresponds to -40.0 dBFS) ──────
+    if class_id == 0 and L_SPL > 80.0:
         class_id = 1
         probability = 0.99
-        mitigation_msg = f"Intensity Override: Audio at {amplitude_db:.1f}dB flagged as threat."
-        
-    # ── 5. Final Decision Logic ───────────────────────────────
+        mitigation_msg = f"Intensity Override: Audio at {L_SPL:.1f} dB SPL ({L_dBFS:.1f} dBFS) flagged as threat."
+
+    # ── 5. Context-Safe Caregiver Arbitration with Pediatric Scream Band Veto (Eq. 4 Fix) ──
+    scream_veto = (R_scream >= 0.22)
+    vision_veto = (vision_tier > 0)
+
     if class_id == 1:
-        if is_parent:
-            # Parent is speaking loudly — override the threat
-            status_msg = f"Safe ({speaker_display} speaking — Threat Override)"
-            class_id = 0
-            mitigation_msg = f"Anti-Fatigue: Loud voice confirmed as authorized parent ({speaker_display}). Alert suppressed."
+        if match_caregiver:
+            # Caregiver voice match (Dist <= 0.125 and L_SPL >= 65.0) NEVER unconditionally silences an alert
+            # if either (a) R_scream >= 0.22 OR (b) vision_tier > 0
+            if scream_veto:
+                threat_level = "high"
+                status_msg = f"Threat Detected (Pediatric Distress Veto: R_scream={R_scream:.3f} >= 0.22 with {speaker_display})"
+                mitigation_msg = f"Caregiver Override Vetoed: High-frequency child scream band energy ratio {R_scream:.3f} >= 0.22 detected despite caregiver voice match."
+                phone_audio_listener._trigger_supabase_alert(
+                    intensity_score=probability * 100.0,
+                    threat_level=threat_level,
+                    device_info=device_info
+                )
+            elif vision_veto:
+                threat_level = "high"
+                status_msg = f"Threat Detected (Vision Hazard Veto: vision_tier={vision_tier} with {speaker_display})"
+                mitigation_msg = f"Caregiver Override Vetoed: Concurrent visual hazard active (tier {vision_tier}) despite caregiver voice match."
+                phone_audio_listener._trigger_supabase_alert(
+                    intensity_score=probability * 100.0,
+                    threat_level=threat_level,
+                    device_info=device_info
+                )
+            else:
+                # MatchParent == True AND R_scream < 0.22 AND vision_tier == 0 -> Contextualized_Safe (Push_Suppressed)
+                status_msg = "Contextualized_Safe (Push_Suppressed)"
+                class_id = 0
+                mitigation_msg = f"Anti-Fatigue: Authorized caregiver ({speaker_display}, Dist={dtw_dist:.3f} <= 0.125, L_SPL={L_SPL:.1f} dB SPL) verified with no pediatric scream (R_scream={R_scream:.3f} < 0.22) and vision_tier=0. Push suppressed."
         else:
             threat_level = "high" if probability >= 0.85 else "moderate"
             status_msg = f"Threat Detected ({threat_level.capitalize()})"
             phone_audio_listener._trigger_supabase_alert(
-                intensity_score=probability * 100.0, 
+                intensity_score=probability * 100.0,
                 threat_level=threat_level,
                 device_info=device_info
             )
     else:
-        if is_parent and amplitude_db >= 40.0:
-            status_msg = f"Safe ({speaker_display} speaking)"
-        elif amplitude_db >= 75.0:
-            mitigation_msg = f"Anti-Fatigue: {amplitude_db:.1f}dB detected but AI confirmed SAFE. Alert suppressed."
-            status_msg = "Safe (Confirmed Safe)"
-        elif amplitude_db < 40.0:
+        # class_id == 0
+        if match_caregiver:
+            if scream_veto:
+                class_id = 1
+                threat_level = "high"
+                status_msg = f"Threat Detected (Pediatric Distress Veto: R_scream={R_scream:.3f} >= 0.22 with {speaker_display})"
+                mitigation_msg = f"Pediatric Distress Alert: Child scream detected in 2.5-5.0 kHz band (R_scream={R_scream:.3f}) despite caregiver presence."
+                phone_audio_listener._trigger_supabase_alert(
+                    intensity_score=95.0,
+                    threat_level=threat_level,
+                    device_info=device_info
+                )
+            elif vision_veto:
+                class_id = 1
+                threat_level = "high"
+                status_msg = f"Threat Detected (Vision Hazard Veto: vision_tier={vision_tier} with {speaker_display})"
+                mitigation_msg = f"Visual Hazard Alert: Active visual hazard (tier {vision_tier}) during caregiver presence."
+                phone_audio_listener._trigger_supabase_alert(
+                    intensity_score=90.0,
+                    threat_level=threat_level,
+                    device_info=device_info
+                )
+            else:
+                status_msg = "Contextualized_Safe (Push_Suppressed)"
+                mitigation_msg = f"Anti-Fatigue: Authorized caregiver ({speaker_display}, Dist={dtw_dist:.3f} <= 0.125, L_SPL={L_SPL:.1f} dB SPL) verified with no pediatric scream (R_scream={R_scream:.3f} < 0.22) and vision_tier=0. Push suppressed."
+        elif L_SPL >= 75.0:
+            if scream_veto:
+                class_id = 1
+                threat_level = "high"
+                status_msg = f"Threat Detected (Pediatric Distress: R_scream={R_scream:.3f} >= 0.22)"
+                phone_audio_listener._trigger_supabase_alert(
+                    intensity_score=90.0,
+                    threat_level=threat_level,
+                    device_info=device_info
+                )
+            else:
+                mitigation_msg = f"Anti-Fatigue: {L_SPL:.1f} dB SPL detected but AI confirmed SAFE. Alert suppressed."
+                status_msg = "Safe (Confirmed Safe)"
+        elif L_SPL < 65.0:
             status_msg = "Safe (Quiet / Normal)"
         else:
             status_msg = "Safe (Normal)"
@@ -369,9 +440,15 @@ async def upload_audio_chunk(
         "class_id": class_id,
         "status": status_msg,
         "probability": f"{probability:.2%}",
-        "amplitude_db": round(float(amplitude_db), 2),
+        "L_dBFS": round(float(L_dBFS), 2),
+        "L_SPL": round(float(L_SPL), 2),
+        "amplitude_db": round(float(L_SPL), 2),
+        "R_scream": round(float(R_scream), 4),
+        "vision_tier": int(vision_tier),
         "mitigation_message": mitigation_msg,
         "is_parent": is_parent,
+        "match_parent": match_caregiver,
+        "biometric_distance": round(float(dtw_dist), 4),
         "active_speaker": current_active_speaker,
         "speaker_role": current_speaker_role,
         "presence_status": presence_status,

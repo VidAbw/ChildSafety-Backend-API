@@ -1,0 +1,10 @@
+Statistical Metric / Hypothesis Test,Value / Statistic,95% Confidence Interval / Bound,p-Value / Significance,Evaluation Partition
+"Classification Accuracy (Point Estimate & 2,000-Iter Bootstrap 95% CI)",98.00%,"[95.0%, 100.0%]",—,"100-Sample Balanced Benchmark (50 Threat, 50 Safe)"
+"Safety-Critical Threat Recall (Point Estimate & 2,000-Iter Bootstrap 95% CI)",96.00% (48/50 TP),"[90.0%, 100.0%]",—,"100-Sample Balanced Benchmark (50 Threat, 50 Safe)"
+"False Alarm Rate — Wilson Score 95% Interval (k = 0 FP, n = 50 Safe)",0.00% (0/50 FP),"[0.00%, 7.13%]",alpha = 0.05,50 Held-Out Safe Benchmark Clips
+"False Alarm Rate — Clopper-Pearson Exact 95% Interval (k = 0 FP, n = 50 Safe)",0.00% (0/50 FP),"[0.00%, 7.11%]",alpha = 0.05 (Exact F-Quantile),50 Held-Out Safe Benchmark Clips
+Area Under ROC Curve (ROC-AUC),"0.9976 (2,494/2,500 pairs)","[0.9920, 1.0000]",p < 0.0001 (vs. AUC = 0.50),100-Sample Balanced Benchmark
+Area Under Precision-Recall Curve (PR-AUC / Average Precision),0.9977,"[0.9925, 1.0000]",p < 0.0001,100-Sample Balanced Benchmark
+Paired McNemar's Test: AudioThreatNet vs. Base MFCC (40ch) + 1D-CNN,"chi2_cc = 24.04 (b=26, c=0)","N=368: chi2_cc = 90.09 (b=95, c=1)",p = 2.98e-08 (p < 0.0001),Paired N=100 Benchmark & N=368 Test Set
+Paired McNemar's Test: AudioThreatNet vs. + Delta-Delta Accel (120ch) + 1D-CNN,"chi2_cc = 14.06 (b=16, c=0)","N=368: chi2_cc = 55.15 (b=60, c=1)",p = 3.05e-05 (p < 0.0001),Paired N=100 Benchmark & N=368 Test Set
+Paired McNemar's Test: Standalone AudioThreatNet (Stage 5b) vs. 1D-CNN (120ch),"chi2_cc = 7.69 (b=12, c=1)","Standalone Neural Gain (+11.0% Acc, +16.0% Rec)",p = 0.0034 (p < 0.01),Paired N=100 Benchmark (No Biometric Gate)

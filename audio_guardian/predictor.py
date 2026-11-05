@@ -55,6 +55,112 @@ MODEL_PATH = Path(__file__).parent.parent / "audio model training" / "audio_thre
 # Maintained for local disk fallback when a remote database is unavailable.
 LOCAL_PROFILE_PATH = Path("parent_profile.wav")
 
+# ─────────────────────────────────────────────────────────────────────────────
+# InvenSense INMP441 Hardware Calibration Constants
+# Sensitivity: -26 dBFS at 94 dB SPL. Acoustic Overload Point (AOP): 120 dB SPL at 0 dBFS.
+# ─────────────────────────────────────────────────────────────────────────────
+INMP441_AOP_SPL = 120.0          # dB SPL at 0 dBFS
+INMP441_SENSITIVITY_DBFS = -26.0  # dBFS at 94 dB SPL
+
+
+def compute_calibrated_spl(y: np.ndarray) -> tuple[float, float, float]:
+    """
+    Computes calibrated digital-to-SPL audio level conversion for the InvenSense INMP441 MEMS microphone.
+    Hardware Calibration:
+        Sensitivity: -26 dBFS at 94 dB SPL
+        Acoustic Overload Point (AOP): 120 dB SPL at 0 dBFS
+    Formula:
+        rms_float in (0, 1]
+        L_dBFS = 20 * np.log10(np.clip(rms_float, 1e-9, 1.0))
+        L_SPL = L_dBFS + 120.0
+        (where 65.0 dB SPL corresponds to -55.0 dBFS, and 80.0 dB SPL corresponds to -40.0 dBFS).
+
+    Returns:
+        tuple[float, float, float]: (rms_float, L_dBFS, L_SPL)
+    """
+    if y is None or len(y) == 0:
+        return 0.0, -180.0, 0.0
+    rms_float = float(np.sqrt(np.mean(y**2)))
+    rms_clipped = float(np.clip(rms_float, 1e-9, 1.0))
+    l_dbfs = float(20.0 * np.log10(rms_clipped))
+    l_spl = float(l_dbfs + INMP441_AOP_SPL)
+    logger.info(f"Calibrated INMP441 audio level: rms={rms_float:.6f}, L_dBFS={l_dbfs:.2f} dBFS, L_SPL={l_spl:.2f} dB SPL")
+    return rms_float, l_dbfs, l_spl
+
+
+def compute_scream_ratio(y: np.ndarray, sr: int = 22050) -> float:
+    """
+    Computes the high-frequency pediatric distress band energy ratio from the 512-point FFT power spectrum:
+        R_scream = sum(P[2500 Hz : 5000 Hz]) / sum(P[20 Hz : 8000 Hz])
+
+    Parameters:
+        y (np.ndarray): 1D float32 audio time-series.
+        sr (int): Sampling rate in Hz (default 22050).
+
+    Returns:
+        float: R_scream ratio in [0.0, 1.0].
+    """
+    if y is None or len(y) < 64:
+        return 0.0
+    n_fft = 512
+    hop_length = 256
+    D = np.abs(librosa.stft(y, n_fft=n_fft, hop_length=hop_length))**2
+    P = np.mean(D, axis=1)
+    freqs = np.fft.rfftfreq(n_fft, d=1.0 / sr)
+
+    distress_mask = (freqs >= 2500.0) & (freqs <= 5000.0)
+    full_band_mask = (freqs >= 20.0) & (freqs <= 8000.0)
+
+    P_scream = float(np.sum(P[distress_mask]))
+    P_total = float(np.sum(P[full_band_mask]))
+
+    if P_total <= 0.0:
+        return 0.0
+    return float(P_scream / P_total)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 64-D Speaker Embedding Corpus Standardization Defaults
+# Precomputed per-dimension mean and std across diverse speech corpus benchmark
+# ─────────────────────────────────────────────────────────────────────────────
+DEFAULT_CORPUS_MEAN = np.array([
+    0.18174662, 0.26844782, 0.15231963, 0.03331356, 0.05476519, 0.02713908,
+    0.01057418, 0.00501462, -0.00739984, -0.00316592, 0.00197156, 0.00236067,
+    -0.00145363, 0.00324213, 0.00468560, 0.00136751, 0.00111996, -0.00138497,
+    0.00076597, 0.00012689, -0.00057346, 0.04442769, 0.03405434, 0.02275247,
+    0.01913963, 0.01272004, 0.01165548, 0.00847140, 0.00193965, 0.00093855,
+    -0.00151667, -0.00262583, -0.00145695, 0.00061160, -0.00134370, -0.00014339,
+    0.00359246, 0.00281886, -0.00082625, 0.00186056, 0.07993391, 0.05875638,
+    0.06853929, 0.06404240, 0.06815514, 0.06907073, 0.06527076, 0.25051695,
+    0.22747843, 0.32937551, 0.02988837, -0.03597710, -0.04000562, -0.04392174,
+    -0.04743415, -0.04829738, -0.04873008, -0.04994698, -0.05127177, -0.05225554,
+    -0.05398074, -0.05619087, -0.05757107, -0.05787012
+], dtype=np.float32)
+
+DEFAULT_CORPUS_STD = np.array([
+    0.51725632, 0.62216866, 0.30317017, 0.36179411, 0.29848796, 0.35414845,
+    0.33852258, 0.34952465, 0.34891099, 0.33425146, 0.33078855, 0.33248872,
+    0.33147818, 0.33391637, 0.31928608, 0.32831120, 0.33475068, 0.31340590,
+    0.31471446, 0.31902850, 0.32305342, 0.70613670, 0.58760512, 0.52328610,
+    0.47661221, 0.45783436, 0.42683327, 0.44191623, 0.45009366, 0.43944150,
+    0.42916566, 0.42844778, 0.40583816, 0.39607996, 0.40030330, 0.38934872,
+    0.36794358, 0.37473917, 0.40566424, 0.39542115, 0.28312412, 0.27727230,
+    0.26234114, 0.26229537, 0.26112360, 0.26381671, 0.26018146, 0.43838823,
+    0.38305867, 0.45176107, 0.36904091, 0.27259627, 0.25797275, 0.25475281,
+    0.25394177, 0.25519904, 0.25529033, 0.25608864, 0.25540707, 0.25463501,
+    0.25475916, 0.25789514, 0.25675479, 0.25628379
+], dtype=np.float32)
+
+# Sub-block weights: [0.8, 1.2, 0.6, 0.8, 0.5, 0.7] across the 6 acoustic sub-blocks
+SUB_BLOCK_WEIGHTS = np.concatenate([
+    np.full(2, 0.8),    # 2D YIN F0 pitch
+    np.full(19, 1.2),   # 19D static MFCCs 1-19
+    np.full(19, 0.6),   # 19D Delta MFCCs
+    np.full(7, 0.8),    # 7D octave spectral contrast
+    np.full(4, 0.5),    # 4D spectral moments [centroid, bandwidth, roll-off, flatness]
+    np.full(13, 0.7)    # 13D Mel-filterbank log energies
+]).astype(np.float32)
+
 
 def extract_features(y: np.ndarray, sr: int = 22050) -> np.ndarray:
     """
@@ -184,6 +290,24 @@ class AudioThreatNet(nn.Module):
         return out
 
 
+def load_corpus_stats() -> tuple[np.ndarray, np.ndarray]:
+    """
+    Loads the 64-dimensional speaker corpus mean and standard deviation for Z-score standardization.
+    Returns (mean, std) tuple.
+    """
+    stats_path = Path(__file__).parent / "speaker_corpus_stats.npz"
+    if stats_path.exists():
+        try:
+            data = np.load(stats_path)
+            mean = data["mean"].astype(np.float32)
+            std = data["std"].astype(np.float32)
+            logger.info("Loaded speaker corpus statistics from speaker_corpus_stats.npz")
+            return mean, std
+        except Exception as e:
+            logger.warning(f"Could not load speaker_corpus_stats.npz: {e}")
+    return DEFAULT_CORPUS_MEAN.copy(), DEFAULT_CORPUS_STD.copy()
+
+
 class ThreatPredictor:
     """
     Central inference and voice biometric verification engine for Audio Guardian.
@@ -208,6 +332,22 @@ class ThreatPredictor:
         
         # Load checkpoint weights from disk
         self.load_model()
+        # Load 64-D speaker embedding training corpus statistics
+        self.load_corpus_stats()
+
+    def load_corpus_stats(self):
+        """
+        Loads the 64-dimensional speaker corpus mean and standard deviation for Z-score standardization.
+        """
+        self.corpus_mean, self.corpus_std = load_corpus_stats()
+
+    def compute_calibrated_spl(self, y: np.ndarray) -> tuple[float, float, float]:
+        """Delegates to module-level compute_calibrated_spl."""
+        return compute_calibrated_spl(y)
+
+    def compute_scream_ratio(self, y: np.ndarray, sr: int = 22050) -> float:
+        """Delegates to module-level compute_scream_ratio."""
+        return compute_scream_ratio(y, sr)
 
     def load_model(self):
         """
@@ -376,14 +516,11 @@ class ThreatPredictor:
             return False, None, "Recording is too short. Please speak for at least 3 to 5 seconds."
 
         # ── Step 1: Overall volume / RMS check ───────────────────────────────
-        # RMS measures average signal energy; scaling by 32767 maps float [-1.0, 1.0] to 16-bit PCM scale
-        rms = float(np.sqrt(np.mean(y**2)))
-        rms_scaled = rms * 32767.0
-        db = float(20 * np.log10(rms_scaled) if rms_scaled > 0 else 0.0)
+        rms, l_dbfs, l_spl = self.compute_calibrated_spl(y)
 
-        # Reject quiet audio or background room silence
-        if db < 40.0 or rms < 0.003:
-            logger.warning(f"Voice validation failed: Audio is silent/too quiet (RMS={rms:.5f}, dB={db:.1f}).")
+        # Reject quiet audio or background room silence (below 55.0 dB SPL / -65.0 dBFS)
+        if l_spl < 55.0 or rms < 0.0005:
+            logger.warning(f"Voice validation failed: Audio is silent/too quiet (RMS={rms:.5f}, L_dBFS={l_dbfs:.1f} dBFS, L_SPL={l_spl:.1f} dB SPL).")
             return False, None, "No sound detected (Audio was silent or too quiet). Please speak clearly into the microphone."
 
         # ── Step 2: Short-time frame acoustic feature analysis ───────────────
@@ -455,7 +592,7 @@ class ThreatPredictor:
         except Exception:
             pass
 
-        return True, y_voiced, f"Voice successfully extracted ({voiced_duration:.1f}s voiced speech, {db:.1f} dB)"
+        return True, y_voiced, f"Voice successfully extracted ({voiced_duration:.1f}s voiced speech, {l_spl:.1f} dB SPL, {l_dbfs:.1f} dBFS)"
 
     def extract_mfcc_matrix(self, wav_bytes: bytes, n_mfcc: int = 20, require_vad: bool = True) -> tuple[Optional[np.ndarray], Optional[str]]:
         """
@@ -566,11 +703,12 @@ class ThreatPredictor:
     def check_acoustic_environment(self, audio_bytes: bytes) -> dict:
         """
         Analyzes a short ambient audio sample (1.5-2.5s) to assess background noise.
+        Uses exact InvenSense INMP441 MEMS calibration (0 dBFS = 120.0 dB SPL).
 
-        Calculates the noise floor in decibels (dB) and evaluates readiness for voice enrollment:
-        - < 38 dB: "excellent" (optimal, quiet room)
-        - 38 to 52 dB: "good" (normal background noise)
-        - >= 52 dB: "noisy" (unfavorable noise; prompts user to move to a quieter space)
+        Evaluates readiness for voice enrollment:
+        - < 62.0 dB SPL (-58.0 dBFS): "excellent" (optimal, quiet room)
+        - 62.0 to 72.0 dB SPL (-58.0 to -48.0 dBFS): "good" (normal background noise)
+        - >= 72.0 dB SPL (>= -48.0 dBFS): "noisy" (unfavorable noise; prompts user to move to a quieter space)
 
         Parameters:
             audio_bytes (bytes): Ambient room recording bytes.
@@ -579,6 +717,8 @@ class ThreatPredictor:
             dict: {
                 "is_ready": bool,
                 "status": "excellent" | "good" | "noisy" | "error",
+                "L_dBFS": float,
+                "L_SPL": float,
                 "noise_db": float,
                 "message": str
             }
@@ -589,33 +729,37 @@ class ThreatPredictor:
             return {
                 "is_ready": False,
                 "status": "error",
+                "L_dBFS": -180.0,
+                "L_SPL": 0.0,
                 "noise_db": 0.0,
                 "message": "Could not capture audio. Please ensure microphone permissions are granted.",
             }
 
-        # Calculate Root Mean Square energy and convert to decibels
-        rms = float(np.sqrt(np.mean(y**2)))
-        rms_scaled = rms * 32767.0
-        noise_db = float(20 * np.log10(rms_scaled) if rms_scaled > 0 else 0.0)
+        # Calculate calibrated InvenSense INMP441 audio level
+        rms, l_dbfs, l_spl = self.compute_calibrated_spl(y)
 
         # Categorize environmental acoustic noise floor
-        if noise_db < 38.0:
+        if l_spl < 62.0:
             rating = "excellent"
             is_ready = True
             msg = "Environment is exceptionally quiet and optimal for voice registration."
-        elif noise_db < 52.0:
+        elif l_spl < 72.0:
             rating = "good"
             is_ready = True
             msg = "Acoustic level is ready. Normal room background."
         else:
             rating = "noisy"
             is_ready = False
-            msg = f"Background noise is too loud ({noise_db:.1f} dB). Please move to a quieter room for best accuracy."
+            msg = f"Background noise is too loud ({l_spl:.1f} dB SPL / {l_dbfs:.1f} dBFS). Please move to a quieter room for best accuracy."
+
+        logger.info(f"Acoustic environment check: L_dBFS={l_dbfs:.2f} dBFS, L_SPL={l_spl:.2f} dB SPL, status={rating}")
 
         return {
             "is_ready": is_ready,
             "status": rating,
-            "noise_db": round(noise_db, 1),
+            "L_dBFS": round(l_dbfs, 2),
+            "L_SPL": round(l_spl, 2),
+            "noise_db": round(l_spl, 1),
             "message": msg,
         }
 
@@ -624,7 +768,7 @@ class ThreatPredictor:
         Validates an enrollment passphrase sample for speech presence, clarity, duration, and distortion.
 
         Quality Checks:
-        1. Volume / Silence: Rejects recordings below 40.0 dB.
+        1. Volume / Silence: Rejects recordings below 60.0 dB SPL (-60.0 dBFS).
         2. Clipping / Distortion: Rejects if peak sample amplitude >= 0.99 (microphone overdrive).
         3. Duration: Rejects if total audio duration is under 1.8 seconds.
         4. Speech Clarity: Checks spectral centroid and zero-crossing rate to ensure vocal presence.
@@ -634,7 +778,7 @@ class ThreatPredictor:
             audio_bytes (bytes): Recited phrase audio bytes.
 
         Returns:
-            dict: Evaluation results containing is_valid, clarity_score, duration, db, and status message.
+            dict: Evaluation results containing is_valid, clarity_score, duration, L_dBFS, L_SPL, db, and message.
         """
         # Decode audio bytes into float32 array
         y = self.decode_audio(audio_bytes, target_sr=22050)
@@ -643,24 +787,26 @@ class ThreatPredictor:
                 "is_valid": False,
                 "clarity_score": 0.0,
                 "duration": 0.0,
+                "L_dBFS": -180.0,
+                "L_SPL": 0.0,
                 "db": 0.0,
                 "error": "Audio could not be decoded or was empty. Please speak clearly into the microphone.",
             }
 
-        # Calculate basic signal metrics: duration and volume in decibels
+        # Calculate basic signal metrics: duration and calibrated SPL
         duration = float(len(y) / 22050.0)
-        rms = float(np.sqrt(np.mean(y**2)))
-        rms_scaled = rms * 32767.0
-        db = float(20 * np.log10(rms_scaled) if rms_scaled > 0 else 0.0)
+        rms, l_dbfs, l_spl = self.compute_calibrated_spl(y)
 
-        # 1. Volume & Silence Check: audio must be loud enough to analyze
-        if db < 40.0:
+        # 1. Volume & Silence Check: conversational speech threshold is 65.0 dB SPL (-55.0 dBFS)
+        if l_spl < 60.0:
             return {
                 "is_valid": False,
                 "clarity_score": 10.0,
                 "duration": round(duration, 1),
-                "db": round(db, 1),
-                "error": f"Audio was too quiet ({db:.1f} dB). Please speak directly towards the microphone.",
+                "L_dBFS": round(l_dbfs, 2),
+                "L_SPL": round(l_spl, 2),
+                "db": round(l_spl, 1),
+                "error": f"Audio was too quiet ({l_spl:.1f} dB SPL / {l_dbfs:.1f} dBFS). Please speak directly towards the microphone.",
             }
 
         # 2. Clipping check: values reaching or exceeding 0.99 indicate microphone saturation / clipping
@@ -670,7 +816,9 @@ class ThreatPredictor:
                 "is_valid": False,
                 "clarity_score": 25.0,
                 "duration": round(duration, 1),
-                "db": round(db, 1),
+                "L_dBFS": round(l_dbfs, 2),
+                "L_SPL": round(l_spl, 2),
+                "db": round(l_spl, 1),
                 "error": "Audio clipped or was too loud. Please move slightly further back from the microphone.",
             }
 
@@ -680,7 +828,9 @@ class ThreatPredictor:
                 "is_valid": False,
                 "clarity_score": 30.0,
                 "duration": round(duration, 1),
-                "db": round(db, 1),
+                "L_dBFS": round(l_dbfs, 2),
+                "L_SPL": round(l_spl, 2),
+                "db": round(l_spl, 1),
                 "error": f"Recording was too short ({duration:.1f}s). Please recite the full phrase clearly for at least 3 seconds.",
             }
 
@@ -703,7 +853,9 @@ class ThreatPredictor:
                     "is_valid": False,
                     "clarity_score": round(voiced_ratio * 100.0, 1),
                     "duration": round(duration, 1),
-                    "db": round(db, 1),
+                    "L_dBFS": round(l_dbfs, 2),
+                    "L_SPL": round(l_spl, 2),
+                    "db": round(l_spl, 1),
                     "error": "Voice was not clear or sounded like ambient noise. Please speak the challenge phrase firmly.",
                 }
 
@@ -717,7 +869,9 @@ class ThreatPredictor:
                 "is_valid": True,
                 "clarity_score": round(clarity, 1),
                 "duration": round(duration, 1),
-                "db": round(db, 1),
+                "L_dBFS": round(l_dbfs, 2),
+                "L_SPL": round(l_spl, 2),
+                "db": round(l_spl, 1),
                 "message": f"Phrase verified with high clarity ({clarity:.0f}% vocal confidence, {duration:.1f}s speech).",
             }
 
@@ -727,7 +881,9 @@ class ThreatPredictor:
                 "is_valid": True,
                 "clarity_score": 75.0,
                 "duration": round(duration, 1),
-                "db": round(db, 1),
+                "L_dBFS": round(l_dbfs, 2),
+                "L_SPL": round(l_spl, 2),
+                "db": round(l_spl, 1),
                 "message": "Phrase sample accepted.",
             }
 
@@ -803,34 +959,42 @@ class ThreatPredictor:
             sc, sb, sr_ro, sf = 1.0, 1.0, 1.0, 0.01
 
         # ── Component 6: Mel Spectrogram Frequency Envelope (13 values) ──────
-        # Coarse energy distribution across 13 perceptually spaced Mel frequency bins
+        # Mel filterbank log energies across 13 perceptually spaced Mel frequency bins
         try:
             melspec = librosa.feature.melspectrogram(y=y, sr=sr, n_mels=13)
-            mel_env = np.mean(melspec, axis=1)
+            log_mel = librosa.power_to_db(melspec, ref=np.max)
+            mel_env = np.mean(log_mel, axis=1)
             mel_env = mel_env / (np.linalg.norm(mel_env) + 1e-6)
         except Exception:
             mel_env = np.zeros(13, dtype=np.float32)
 
-        # ── Assembly and Weighting ───────────────────────────────────────────
-        # Assemble feature groups: (2 + 19 + 19 + 7 + 4 + 13 = 64 dimensions)
+        # ── Raw 64-D concatenation ───────────────────────────────────────────
+        # Components: 2 + 19 + 19 + 7 + 4 + 13 = 64 dimensions
         pitch_feat = np.array([mean_f0 / 150.0, std_f0 / 50.0], dtype=np.float32)
         moment_feat = np.array([sc, sb, sr_ro, sf], dtype=np.float32)
 
-        vector = np.concatenate([
-            pitch_feat * 0.8,       # 2 values (Pitch)
-            m_mean * 1.2,           # 19 values (Formant MFCCs - given highest weight)
-            d_mean * 0.6,           # 19 values (Delta dynamics)
-            c_mean * 0.8,           # 7 values (Spectral Contrast)
-            moment_feat * 0.5,      # 4 values (Spectral Moments)
-            mel_env * 0.7           # 13 values (Mel Filterbank Envelope)
-        ])
+        e = np.concatenate([
+            pitch_feat,      # 2 values (Pitch)
+            m_mean,          # 19 values (Formant MFCCs 1-19)
+            d_mean,          # 19 values (Delta dynamics)
+            c_mean,          # 7 values (Spectral Contrast)
+            moment_feat,     # 4 values (Spectral Moments)
+            mel_env          # 13 values (Mel Filterbank log energies)
+        ]).astype(np.float32)
 
-        # Final L2-normalization to project vector onto the unit hypersphere
-        norm = np.linalg.norm(vector)
-        if norm > 0:
-            vector = vector / norm
+        # ── Per-dimension Z-score standardization: z = (e - mu) / sigma ──────
+        mu = getattr(self, "corpus_mean", DEFAULT_CORPUS_MEAN)
+        sigma = getattr(self, "corpus_std", DEFAULT_CORPUS_STD)
+        z = (e - mu) / (sigma + 1e-6)
 
-        return vector.astype(np.float32)
+        # ── Sub-block Weighting [0.8, 1.2, 0.6, 0.8, 0.5, 0.7] ─────────────
+        u = z * SUB_BLOCK_WEIGHTS
+
+        # ── Final L2 Unit-Hypersphere Normalization (u_hat = u / ||u||_2) ─────
+        norm = float(np.linalg.norm(u))
+        u_hat = (u / norm) if norm > 0 else u
+
+        return u_hat.astype(np.float32)
 
     def extract_mfcc_matrix(self, wav_bytes: bytes, n_mfcc: int = 20, require_vad: bool = True) -> tuple[Optional[np.ndarray], Optional[str]]:
         """
@@ -912,14 +1076,39 @@ class ThreatPredictor:
         if y is None or len(y) < 1000:
             return False, None, 1.0
 
-        # Step 2: Volume check (reject quiet room noise to prevent spurious false matches)
-        rms = float(np.sqrt(np.mean(y**2)))
-        rms_scaled = rms * 32767.0
-        db = float(20 * np.log10(rms_scaled) if rms_scaled > 0 else 0.0)
-        if db < 38.0:
+        # Step 2: Calibrated volume check (reject quiet room noise < 55.0 dB SPL / -65.0 dBFS)
+        rms_float, l_dbfs, l_spl = self.compute_calibrated_spl(y)
+        if l_spl < 55.0:
+            logger.warning(f"Speaker verification rejected: Audio below speech floor (L_SPL={l_spl:.1f} dB SPL, L_dBFS={l_dbfs:.1f} dBFS).")
             return False, None, 1.0
 
-        # Step 3: Extract live 64-dimensional biometric vocal tract embedding
+        # Step 2b: Voice Activity Detection (VAD) & Harmonic-Percussive Source Separation (HPSS)
+        # Reject pure non-vocal broadband noise (when harmonic-to-percussive ratio or voiced frame ratio < 0.35)
+        # before computing Cosine distance Dist = 1 - np.dot(u_hat, v_hat)
+        try:
+            y_harm, y_perc = librosa.effects.hpss(y)
+            harm_energy = float(np.sum(y_harm**2))
+            perc_energy = float(np.sum(y_perc**2))
+            hpr = float(harm_energy / (perc_energy + 1e-8))
+
+            frame_rms = librosa.feature.rms(y=y, frame_length=1024, hop_length=512)[0]
+            frame_zcr = librosa.feature.zero_crossing_rate(y=y, frame_length=1024, hop_length=512)[0]
+            frame_sc = librosa.feature.spectral_centroid(y=y, sr=22050, n_fft=1024, hop_length=512)[0]
+            max_rms = float(np.max(frame_rms)) if len(frame_rms) > 0 else 0.0
+            thresh_rms = max(0.005, max_rms * 0.15)
+            voiced_mask = (frame_rms >= thresh_rms) & (frame_sc >= 150.0) & (frame_sc <= 4500.0) & (frame_zcr <= 0.40)
+            voiced_ratio = float(np.mean(voiced_mask))
+
+            if hpr < 0.35 or voiced_ratio < 0.35:
+                logger.warning(
+                    f"Biometric verification rejected: Pure non-vocal broadband noise detected "
+                    f"(HPR={hpr:.3f}, VoicedRatio={voiced_ratio:.3f} < 0.35 threshold)."
+                )
+                return False, None, 1.0
+        except Exception as e_vad:
+            logger.warning(f"VAD/HPSS broadband noise pre-check error: {e_vad}")
+
+        # Step 3: Extract live standardized 64-dimensional biometric vocal tract embedding
         live_vector = self.extract_speaker_biometric_vector(y, sr=22050)
         
         # Operational biometric cosine distance threshold

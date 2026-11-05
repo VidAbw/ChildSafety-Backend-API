@@ -1,0 +1,22 @@
+\begin{table*}[htbp]
+\centering
+\caption{Statistical Significance, 2,000-Iteration Non-Parametric Bootstrap Confidence Intervals, Zero-Numerator Binomial Bounds, and Paired McNemar's Tests.}
+\label{tab:statistical_significance}
+\resizebox{\textwidth}{!}{
+\begin{tabular}{llccc}
+\toprule
+\textbf{Statistical Metric / Hypothesis Comparison} & \textbf{Point Estimate / Test Statistic} & \textbf{95\% Confidence Interval / Exact Bound} & \textbf{$p$-Value / Significance} & \textbf{Evaluation Partition} \\
+\midrule
+Classification Accuracy (2,000-Iter Non-Parametric Bootstrap) & $98.00\%$ ($98/100$) & $[95.0\%, 100.0\%]$ & — & $N = 100$ Balanced Benchmark \\
+Safety-Critical Threat Recall (2,000-Iter Non-Parametric Bootstrap) & $96.00\%$ ($48/50\text{ TP}$) & $[90.0\%, 100.0\%]$ & — & $N = 100$ Balanced Benchmark \\
+False Alarm Rate — Wilson Score Interval ($k = 0\text{ FP}, n = 50\text{ Safe}$) & $0.00\%$ ($0/50\text{ FP}$) & $[0.00\%, 7.13\%]$ & $\alpha = 0.05$ & $n = 50$ Safe Benchmark Clips \\
+False Alarm Rate — Clopper-Pearson Exact Interval ($k = 0\text{ FP}, n = 50\text{ Safe}$) & $0.00\%$ ($0/50\text{ FP}$) & $[0.00\%, 7.11\%]$ & $\alpha = 0.05$ (Exact $F$-Quantile) & $n = 50$ Safe Benchmark Clips \\
+Receiver Operating Characteristic Area Under Curve (ROC-AUC) & $0.9976$ ($2{,}494/2{,}500$ pairs) & $[0.9920, 1.0000]$ & $p < 0.0001$ & $N = 100$ Balanced Benchmark \\
+Precision-Recall Area Under Curve (PR-AUC / Average Precision) & $0.9977$ & $[0.9925, 1.0000]$ & $p < 0.0001$ & $N = 100$ Balanced Benchmark \\
+Paired McNemar's Test: AudioThreatNet vs. Base MFCC ($40\text{ch}$) + 1D-CNN & $\chi^2_{\text{cc}} = 24.04$ ($b=26, c=0$) & $N=368$: $\chi^2_{\text{cc}} = 90.09$ ($b=95, c=1$) & $p = 2.98e-08$ ($p < 0.0001$) & Paired $N=100$ \& $N=368$ \\
+Paired McNemar's Test: AudioThreatNet vs. + Delta-Delta ($120\text{ch}$) + 1D-CNN & $\chi^2_{\text{cc}} = 14.06$ ($b=16, c=0$) & $N=368$: $\chi^2_{\text{cc}} = 55.15$ ($b=60, c=1$) & $p = 3.05e-05$ ($p < 0.0001$) & Paired $N=100$ \& $N=368$ \\
+Paired McNemar's Test: Standalone AudioThreatNet (Stage 5b) vs. 1D-CNN ($120\text{ch}$) & $\chi^2_{\text{cc}} = 7.69$ ($b=12, c=1$) & Standalone Neural Gain ($+11.0\%$ Acc, $+16.0\%$ Rec) & $p = 0.0034$ ($p < 0.01$) & Paired $N=100$ (No Biometrics) \\
+\bottomrule
+\end{tabular}
+}
+\end{table*}

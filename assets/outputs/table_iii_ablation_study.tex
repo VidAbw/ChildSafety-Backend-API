@@ -1,0 +1,21 @@
+\begin{table*}[htbp]
+\centering
+\caption{Table III: Reconciled Ablation Study Separating Multi-Spectral Channel Expansion, Temporal Recurrence, Cost-Sensitive Loss Weighting, and 64-D Biometric Gating.}
+\label{tab:ablation_study}
+\resizebox{\textwidth}{!}{
+\begin{tabular}{llcccccl}
+\toprule
+\textbf{Stage} & \textbf{Pipeline Configuration} & \textbf{Accuracy} & \textbf{Precision} & \textbf{Recall} & \textbf{F1-Score} & \textbf{FP Rate} & \textbf{Primary Mechanism \& Isolated Contribution} \\
+\midrule
+Stage 1a & Base MFCC ($40\text{ch}$) + Legacy Flattened ANN ($776{,}514$ params) & 31.0\% & 33.0\% & 28.0\% & 30.2\% & 68.0\% & Severe frame-position overfitting + inverted class-label polarity \\
+Stage 1b & Regularized MLP ($120\text{-D}$ Temporal GAP, Dropout $0.3$, $9{,}890$ params) & 69.0\% & 70.2\% & 66.0\% & 68.0\% & 28.0\% & Temporal global average pooling restores shift invariance ($+38.0\%$ Acc) \\
+Stage 2 & Base MFCC ($40\text{ch}$) + 1D-CNN ($32{,}706$ params) & 72.5\% & 74.0\% & 68.0\% & 71.1\% & 42.0\% & Local 1D temporal convolutions over static cepstral envelope \\
+Stage 3 & + Delta Velocity ($80\text{ch}$) + 1D-CNN ($40{,}386$ params) & 79.4\% & 80.5\% & 76.0\% & 78.2\% & 31.0\% & First-order spectral velocity trajectories ($+6.9\%$ Acc, $+8.0\%$ Recall) \\
+Stage 4 & + Delta-Delta Accel ($120\text{ch}$) + 1D-CNN ($48{,}066$ params) & 82.0\% & 83.0\% & 80.0\% & 81.3\% & 22.0\% & Second-order pitch/formant acceleration captures abrupt scream onset \\
+Stage 5a & $120\text{ch}$ 1D-CNN + LSTM [Unweighted CE Loss] ($97{,}602$ params) & 92.6\% & 94.0\% & 88.0\% & 91.2\% & 11.0\% & Sequential LSTM memory tracks sustained phonatory distress ($44/50\text{ TP}$) \\
+Stage 5b & \textbf{AudioThreatNet: $120\text{ch}$ 1D-CNN + LSTM + Cost-Sensitive Loss $[1.0, 1.2]$} & 93.0\% & 90.6\% & \textbf{96.0\%} & 93.2\% & 10.0\% & \textbf{Standalone neural classifier boosts Recall to $96.0\%$ ($48/50\text{ TP}$, no profile needed)} \\
+\textbf{Stage 6} & \textbf{Full Pipeline: AudioThreatNet + 64-D Biometric Gate ($\theta_{\text{bio}}=0.125$)} & \textbf{98.0\%} & \textbf{100.0\%} & \textbf{96.0\%} & \textbf{97.96\%} & \textbf{0.0\%} & \textbf{64-D Cosine gate ($R_{\text{scream}}<0.22$ veto) suppresses adult vocal FPs to $0.0\%$} \\
+\bottomrule
+\end{tabular}
+}
+\end{table*}

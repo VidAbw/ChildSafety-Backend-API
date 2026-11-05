@@ -1,0 +1,17 @@
+\babel@toc {english}{}\relax 
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\contentsline {figure}{\numberline {4.1}{\ignorespaces Overall System Architecture and Data Ingestion Topology of the Audio Guardian Component.}}{20}{figure.caption.9}%
+\contentsline {figure}{\numberline {4.2}{\ignorespaces Multi-Tiered Dual-Backend Fallback Architecture and Failover Logic.}}{22}{figure.caption.10}%
+\contentsline {figure}{\numberline {4.3}{\ignorespaces State Transition Diagram of the 3-Step Guided Biometric Voice Enrollment Wizard.}}{23}{figure.caption.11}%
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\contentsline {figure}{\numberline {6.1}{\ignorespaces Normalized confusion matrix of the proposed AudioThreatNet architecture evaluated on the 100-sample balanced benchmark (50 Safe, 50 Threat).}}{28}{figure.caption.13}%
+\contentsline {figure}{\numberline {6.2}{\ignorespaces Multi-metric benchmark comparison across neural architectures and validation loss vs. inference latency.}}{29}{figure.caption.15}%
+\contentsline {figure}{\numberline {6.3}{\ignorespaces Receiver Operating Characteristic (ROC-AUC = 0.9976) and Precision-Recall (PR-AUC = 0.9977) curves for AudioThreatNet.}}{29}{figure.caption.16}%
+\addvspace {10\p@ }
+\contentsline {figure}{\numberline {7.1}{\ignorespaces Ablation study chart demonstrating accuracy progression and false alarm reduction across feature and architectural stages.}}{32}{figure.caption.20}%
+\addvspace {10\p@ }
+\addvspace {10\p@ }

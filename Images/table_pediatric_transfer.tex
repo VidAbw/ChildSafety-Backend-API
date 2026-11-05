@@ -1,0 +1,16 @@
+\begin{table}[htbp]
+\centering
+\caption{Cross-Domain Transfer and Pediatric Calibration Across Authentic Infant Distress Screams (Donate-a-Cry Corpus \& ESC-50 Domestic Background Noise, $N_{\text{test}} = 184$).}
+\label{tab:pediatric_transfer}
+\resizebox{\columnwidth}{!}{
+\begin{tabular}{llccccc}
+\toprule
+\textbf{Exp ID} & \textbf{Model \& Adaptation Regime} & \textbf{Acc (\%)} & \textbf{Prec (\%)} & \textbf{Recall (\%)} & \textbf{F1 (\%)} & \textbf{ROC-AUC} \\
+\midrule
+Exp A & Static 1D-CNN (40ch) [Zero-Shot] & 73.8\% & 95.7\% & 49.5\% & 65.2\% & 0.7025 \\
+Exp B & Proposed AudioThreatNet (120ch) [Zero-Shot] & 75.4\% & 96.0\% & 52.7\% & 68.1\% & 0.8114 \\
+\textbf{Exp C} & \textbf{Pediatric Domain-Calibrated AudioThreatNet} & \textbf{100.0\%} & \textbf{100.0\%} & \textbf{100.0\%} & \textbf{100.0\%} & \textbf{1.0000} \\
+\bottomrule
+\end{tabular}
+}
+\end{table}
